@@ -1,0 +1,326 @@
+---
+import BaseLayout from '../layouts/BaseLayout.astro';
+import '../styles/global.css';
+
+// SVG géométriques pour décoration Neo-Memphis
+const triangleSVG = `<svg width="80" height="80" viewBox="0 0 80 80" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <path d="M40 0L80 80H0L40 0Z" fill="currentColor" fill-opacity="0.7"/>
+</svg>`;
+
+const circleSVG = `<svg width="60" height="60" viewBox="0 0 60 60" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <circle cx="30" cy="30" r="30" fill="currentColor" fill-opacity="0.6"/>
+</svg>`;
+
+const zigzagSVG = `<svg width="120" height="30" viewBox="0 0 120 30" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <path d="M0 15L20 0L40 15L60 0L80 15L100 0L120 15" stroke="currentColor" stroke-width="2" stroke-opacity="0.7"/>
+</svg>`;
+
+const squigglySVG = `<svg width="100" height="20" viewBox="0 0 100 20" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <path d="M0 10C5 5 10 15 15 10C20 5 25 15 30 10C35 5 40 15 45 10C50 5 55 15 60 10C65 5 70 15 75 10C80 5 85 15 90 10C95 5 100 15 100 10" stroke="currentColor" stroke-width="2" stroke-linecap="round" fill="none"/>
+</svg>`;
+
+const crossSVG = `<svg width="40" height="40" viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <path d="M5 5L35 35M5 35L35 5" stroke="currentColor" stroke-width="3" stroke-linecap="round"/>
+</svg>`;
+
+const dotGridSVG = `<svg width="70" height="70" viewBox="0 0 70 70" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <circle cx="10" cy="10" r="3" fill="currentColor"/>
+  <circle cx="35" cy="10" r="3" fill="currentColor"/>
+  <circle cx="60" cy="10" r="3" fill="currentColor"/>
+  <circle cx="10" cy="35" r="3" fill="currentColor"/>
+  <circle cx="35" cy="35" r="3" fill="currentColor"/>
+  <circle cx="60" cy="35" r="3" fill="currentColor"/>
+  <circle cx="10" cy="60" r="3" fill="currentColor"/>
+  <circle cx="35" cy="60" r="3" fill="currentColor"/>
+  <circle cx="60" cy="60" r="3" fill="currentColor"/>
+</svg>`;
+---
+
+<BaseLayout title="Économat - Années 80" description="Système d'inventaire rétro inspiré des années 80 pour gérer vos placards, frigo et légumes">
+	<!-- Bannière Neo-Memphis en haut de page -->
+	<div class="relative w-full h-2 bg-gradient-to-r from-neo-pink via-neo-yellow to-neo-blue mb-10"></div>
+	
+	<!-- Titre principal et introduction avec décorations Neo-Memphis -->
+	<section class="mb-16 md:mb-20 text-center relative overflow-hidden">
+		<!-- Éléments décoratifs Neo-Memphis avec couleurs fixes au lieu de classes dynamiques -->
+		<div class="absolute top-[-20px] right-[10%] text-neo-pink transform rotate-12 opacity-70 z-0 hidden md:block animate-float">
+			<Fragment set:html={triangleSVG} />
+		</div>
+		<div class="absolute bottom-[10%] left-[-10px] text-neo-yellow transform -rotate-12 opacity-60 z-0 hidden md:block animate-float-reverse">
+			<Fragment set:html={circleSVG} />
+		</div>
+		<!-- Nouvel élément décoratif: croix -->
+		<div class="absolute top-[40%] left-[5%] opacity-20 z-0 hidden lg:block" style="color: #a5c8e4; animation: pulse 7s ease-in-out infinite;">
+			<Fragment set:html={crossSVG} />
+		</div>
+		<!-- Nouvel élément décoratif: grille de points -->
+		<div class="absolute bottom-[5%] right-[8%] opacity-30 z-0 hidden lg:block" style="color: #dcc7ff;">
+			<Fragment set:html={dotGridSVG} />
+		</div>
+		
+		<h2 class="text-2xl md:text-4xl font-bold mb-6 md:mb-8 tracking-retro uppercase relative z-10">
+			<span class="relative">
+				<!-- Soulignement Neo-Memphis -->
+				<span class="absolute -bottom-2 left-0 w-full h-1 bg-neo-mint/50"></span>
+				Bienvenue dans mon économat
+			</span>
+		</h2>
+		
+		<!-- Terminal inspiré années 80 avec fond à motifs grid -->
+		<div class="font-mono bg-night text-cream p-4 md:p-6 rounded-sm mb-8 md:mb-10 mx-auto max-w-2xl overflow-hidden relative paper-cut neo-terminal-shadow">
+			<!-- Grid pattern overlay -->
+			<div class="absolute inset-0 bg-grid-lines opacity-10 bg-[length:20px_20px] pointer-events-none" style="background-position: 1px 1px;"></div>
+			
+			<!-- Coin décoratif Neo-Memphis -->
+			<div class="absolute top-0 right-0 w-16 h-16 overflow-hidden">
+				<div class="absolute top-0 right-0 w-full h-full bg-neo-blue/10 transform rotate-45 translate-x-1/2 -translate-y-1/2"></div>
+			</div>
+			
+			<div class="flex items-center justify-between mb-3 pb-2 border-b border-cream/20 relative z-10">
+				<span class="text-xs opacity-70">TERMINAL V1.0</span>
+				<span class="text-xs opacity-70">[ÉCONOMAT-OS]</span>
+			</div>
+			<div class="typewriter-text relative z-10">
+				<p class="text-sm md:text-base leading-relaxed">
+						<span style="color: #bce4d0;">$</span> <span class="font-bold">SYSTÈME:</span> Bienvenue dans l'interface de l'économat.<br/>
+						<span style="color: #ffb0bd;">$</span> <span class="font-bold">STATUS:</span> Tous les systèmes opérationnels.<br/>
+						<span style="color: #ffd166;">$</span> <span class="font-bold">INFO:</span> Explorez notre collection d'articles soigneusement sélectionnés.<br/>
+						<span style="color: #a5c8e4;">$</span> <span class="font-bold">ATTENTE:</span> Commande utilisateur..._
+				</p>
+			</div>
+		</div>
+		
+		<!-- Bouton CTA avec style Neo-Memphis -->
+		<div class="flex justify-center relative z-10">
+			<a href="/items" class="inline-flex items-center justify-center px-8 py-3 bg-rust text-cream font-bold text-lg uppercase tracking-wider transition-all duration-300 ease-in-out relative overflow-hidden neo-border-sm hover:-translate-y-0.5 neo-cta">
+				<!-- Déco du bouton -->
+				<div class="absolute left-0 top-0 h-full w-1 bg-neo-pink/70"></div>
+				<span class="relative z-10 flex items-center">
+					<span class="mr-2">Voir les articles</span>
+					<span class="text-lg">→</span>
+				</span>
+			</a>
+		</div>
+		
+		<!-- Zigzag Neo-Memphis au bas de la section -->
+		<div class="mt-16 text-petrol/30 flex justify-center">
+			<Fragment set:html={zigzagSVG} />
+		</div>
+	</section>
+
+	<!-- Nouvelle section: Stats avec décoration Neo-Memphis -->
+	<section class="mb-20 relative overflow-hidden">
+		<!-- Décoration d'arrière-plan Neo-Memphis -->
+		<div class="absolute top-0 left-0 w-full h-full opacity-5">
+			<div class="absolute top-0 left-0 h-full w-full bg-confetti"></div>
+		</div>
+		
+		<!-- Élément décoratif: ligne squiggly -->
+		<div class="absolute top-0 left-[20%] text-neo-pink/40 transform -translate-x-1/2 hidden md:block">
+			<Fragment set:html={squigglySVG} />
+		</div>
+		
+		<div class="p-8 md:p-12 relative z-10">
+			<h3 class="text-xl md:text-2xl font-bold mb-10 tracking-retro text-center relative inline-block">
+				<span class="absolute -left-6 top-1/2 transform -translate-y-1/2 w-4 h-4 bg-neo-yellow"></span>
+				STATISTIQUES DE L'ÉCONOMAT
+				<span class="absolute -right-6 top-1/2 transform -translate-y-1/2 w-4 h-4 bg-neo-blue"></span>
+			</h3>
+			
+			<div class="grid grid-cols-1 md:grid-cols-3 gap-8 text-center">
+				<!-- Stat card 1 -->
+				<div class="p-6 border border-night/10 relative overflow-hidden neo-stat-card">
+					<!-- Élément décoratif -->
+					<div class="absolute top-0 left-0 w-8 h-8 bg-neo-pink/20"></div>
+					
+					<span class="block text-3xl font-mono font-bold mb-2 text-petrol">42</span>
+					<span class="block text-sm uppercase tracking-wider opacity-70">Articles en stock</span>
+				</div>
+				
+				<!-- Stat card 2 -->
+				<div class="p-6 border border-night/10 relative overflow-hidden neo-stat-card">
+					<!-- Élément décoratif -->
+					<div class="absolute top-0 right-0 w-8 h-8 bg-neo-yellow/20"></div>
+					
+					<span class="block text-3xl font-mono font-bold mb-2 text-rust">8</span>
+					<span class="block text-sm uppercase tracking-wider opacity-70">Catégories</span>
+				</div>
+				
+				<!-- Stat card 3 -->
+				<div class="p-6 border border-night/10 relative overflow-hidden neo-stat-card">
+					<!-- Élément décoratif -->
+					<div class="absolute bottom-0 right-0 w-8 h-8 bg-neo-blue/20"></div>
+					
+					<span class="block text-3xl font-mono font-bold mb-2 text-pastel-blue">12</span>
+					<span class="block text-sm uppercase tracking-wider opacity-70">Emplacements</span>
+				</div>
+			</div>
+		</div>
+	</section>
+
+	<!-- Grille classique avec style Neo-Memphis -->
+	<section class="mb-16 md:mb-24 relative">
+		<!-- Élément décoratif -->
+		<div class="absolute top-[50%] right-[-30px] translate-y-[-50%] opacity-50 hidden lg:block" style="color: #dcc7ff;">
+			<div class="w-16 h-32 bg-current clip-rhombus transform rotate-12"></div>
+		</div>
+		<!-- Nouvel élément décoratif: cercle couleur néon -->
+		<div class="absolute top-[-20px] left-[20%] w-12 h-12 rounded-full opacity-30 hidden md:block" style="background: linear-gradient(45deg, #ffb0bd, #ffd166); filter: blur(8px);"></div>
+		
+		<h3 class="text-xl md:text-2xl font-bold mb-8 tracking-retro relative">
+			<div class="inline-block relative">
+				<span class="relative z-10">ACCÈS RAPIDE</span>
+				<!-- Surlignement style marqueur -->
+				<span class="absolute bottom-0 left-0 w-full h-3 bg-neo-mint/30 -z-10"></span>
+			</div>
+		</h3>
+		
+		<div class="grid grid-cols-1 md:grid-cols-2 gap-6 md:gap-8">
+			<!-- Carte Catalogue avec style Neo-Memphis -->
+			<div class="border border-night/20 p-6 md:p-8 hover:border-petrol transition-all duration-300 relative overflow-hidden paper-cut-soft bg-cream neo-card">
+				<!-- Élément décoratif Neo-Memphis -->
+				<div class="absolute top-0 right-0 w-16 h-16 clip-triangle transform rotate-180" style="background-color: rgba(188, 228, 208, 0.2);">
+				</div>
+				
+				<!-- Ligne décorative Neo-Memphis en haut -->
+				<div class="absolute top-0 left-0 h-1 w-1/3 bg-neo-mint/50"></div>
+				
+				<h3 class="text-xl font-bold mb-4 tracking-retro">Catalogue</h3>
+				<p class="opacity-80 mb-4 text-sm md:text-base">Découvrez notre sélection d'articles vintages et fonctionnels.</p>
+				<a href="/items" class="inline-flex items-center text-petrol hover-underline neo-link">
+					<span>Explorer</span>
+					<span class="ml-1">→</span>
+				</a>
+			</div>
+			
+			<!-- Carte Inventaire avec style Neo-Memphis -->
+			<div class="border border-night/20 p-6 md:p-8 hover:border-rust transition-all duration-300 relative overflow-hidden paper-cut-soft bg-cream neo-card">
+				<!-- Élément décoratif Neo-Memphis -->
+				<div class="absolute top-0 left-0 w-10 h-10 clip-circle" style="background-color: rgba(255, 202, 176, 0.3);">
+				</div>
+				
+				<!-- Ligne décorative Neo-Memphis à droite -->
+				<div class="absolute top-0 right-0 h-full w-1 bg-neo-peach/50"></div>
+				
+				<h3 class="text-xl font-bold mb-4 tracking-retro">Inventaire</h3>
+				<p class="opacity-80 mb-4 text-sm md:text-base">Parcourez l'état de notre stock en temps réel.</p>
+				<a href="/items" class="inline-flex items-center text-rust hover-underline neo-link">
+					<span>Consulter</span>
+					<span class="ml-1">→</span>
+				</a>
+			</div>
+		</div>
+	</section>
+	
+	<!-- Nouvelle section: Banner CTA finale avec décorations Neo-Memphis -->
+	<section class="mb-12 md:mb-16 relative overflow-hidden">
+		<!-- Décoration d'arrière-plan -->
+		<div class="absolute inset-0 bg-grid-dots opacity-10" style="background-size: 15px 15px; background-color: rgba(220, 199, 255, 0.1);"></div>
+		
+		<!-- Éléments décoratifs -->
+		<div class="absolute top-[-10px] left-[10%] w-6 h-6 bg-neo-yellow/60 transform rotate-45"></div>
+		<div class="absolute bottom-[-10px] right-[10%] w-6 h-6 bg-neo-pink/60 rounded-full"></div>
+		
+		<div class="p-8 md:p-10 text-center relative z-10">
+			<p class="text-lg md:text-xl mb-6 max-w-2xl mx-auto">
+				<span class="relative inline-block">
+					<span class="absolute bottom-0 left-0 w-full h-2 bg-neo-blue/20 -z-10"></span>
+					Gardez le contrôle de votre économat
+				</span> 
+				avec notre système de gestion d'inventaire rétro et efficace.
+			</p>
+			
+			<div class="flex flex-wrap justify-center gap-4 mt-6">
+				<a href="/items/new" class="px-6 py-3 bg-night text-cream font-bold tracking-wider uppercase text-sm neo-border-sm hover:-translate-y-0.5 transition-transform">
+					+ Ajouter un article
+				</a>
+				<a href="/categories" class="px-6 py-3 border border-night/30 font-bold tracking-wider uppercase text-sm hover:bg-night/5 transition-colors">
+					Voir les catégories
+				</a>
+			</div>
+		</div>
+	</section>
+</BaseLayout>
+
+<style>
+	/* Animations pour les formes Neo-Memphis */
+	@keyframes float {
+		0%, 100% { transform: translateY(0) rotate(12deg); }
+		50% { transform: translateY(-10px) rotate(10deg); }
+	}
+	
+	@keyframes float-reverse {
+		0%, 100% { transform: translateY(0) rotate(-12deg); }
+		50% { transform: translateY(-8px) rotate(-15deg); }
+	}
+	
+	@keyframes pulse {
+		0%, 100% { opacity: 0.2; transform: scale(1); }
+		50% { opacity: 0.3; transform: scale(1.05); }
+	}
+
+	/* Classes d'animation pour éviter les styles inline */
+	.animate-float {
+		animation: float 8s ease-in-out infinite;
+	}
+	
+	.animate-float-reverse {
+		animation: float-reverse 10s ease-in-out infinite;
+	}
+	
+	/* Styles Neo-Memphis supplémentaires */
+	.neo-terminal-shadow {
+		box-shadow: 5px 5px 0 rgba(10, 11, 12, 0.1);
+	}
+	
+	.neo-stat-card {
+		transition: all 0.3s ease;
+	}
+	
+	.neo-stat-card:hover {
+		transform: translateY(-3px);
+		box-shadow: 0 3px 10px rgba(10, 11, 12, 0.05);
+	}
+	
+	.neo-card {
+		transition: all 0.3s ease;
+	}
+	
+	.neo-card:hover {
+		transform: translateY(-3px) translateX(2px);
+	}
+	
+	.neo-cta::before {
+		content: '';
+		position: absolute;
+		top: 0;
+		right: 0;
+		width: 10px;
+		height: 10px;
+		background-color: rgba(255, 176, 189, 0.7);
+		z-index: 1;
+	}
+	
+	.neo-link {
+		position: relative;
+		transition: all 0.2s ease;
+	}
+	
+	.neo-link::before {
+		content: '';
+		position: absolute;
+		bottom: -2px;
+		left: 0;
+		width: 100%;
+		height: 1px;
+		background-color: currentColor;
+		transform: scaleX(0);
+		transform-origin: right;
+		transition: transform 0.3s ease;
+	}
+	
+	.neo-link:hover::before {
+		transform: scaleX(1);
+		transform-origin: left;
+	}
+</style>

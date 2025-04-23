@@ -1,0 +1,48 @@
+{
+  "kind": "collectionType",
+  "collectionName": "items",
+  "info": {
+    "singularName": "item",
+    "pluralName": "items",
+    "displayName": "Item"
+  },
+  "options": {
+    "draftAndPublish": false
+  },
+  "attributes": {
+    "name": {
+      "type": "string",
+      "required": true
+    },
+    "quantity": {
+      "type": "float",
+      "required": true
+    },
+    "unit": {
+      "type": "enumeration",
+      "enum": ["g", "kg", "L", "mL", "piece"]
+    },
+    "expiration_date": {
+      "type": "date"
+    },
+    "notes": {
+      "type": "text"
+    },
+    "category": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::category.category"
+    },
+    "storage_location": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::location.location"
+    },
+    "user": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "plugin::users-permissions.user",
+      "private": true
+    }
+  }
+}

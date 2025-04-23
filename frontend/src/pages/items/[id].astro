@@ -1,0 +1,204 @@
+---
+import BaseLayout from '../../layouts/BaseLayout.astro';
+import '../../styles/global.css';
+
+// Récupération de l'ID depuis les paramètres d'URL
+const { id } = Astro.params;
+
+// Fonction pour récupérer les données d'un item spécifique
+async function fetchItem(id) {
+  try {
+    const response = await fetch(`http://localhost:1337/api/items/${id}?populate=category,location,image`);
+    const data = await response.json();
+    
+    if (!data || !data.data) {
+      throw new Error('Item non trouvé');
+    }
+    
+    return data.data;
+  } catch (error) {
+    console.error('Erreur lors de la récupération de l\'item:', error);
+    return null;
+  }
+}
+
+// Récupération de l'item
+let item = null;
+let error = null;
+
+try {
+  item = await fetchItem(id);
+} catch (e) {
+  error = e.message;
+}
+
+// Formatage de la date d'expiration si elle existe
+const formattedExpiryDate = item?.attributes?.expiryDate 
+  ? new Date(item.attributes.expiryDate).toLocaleDateString('fr-FR', { 
+      year: 'numeric', 
+      month: 'long', 
+      day: 'numeric' 
+    }) 
+  : null;
+
+// Calcul de l'état d'expiration
+let expiryStatus = null;
+if (item?.attributes?.expiryDate) {
+  const today = new Date();
+  const expiry = new Date(item.attributes.expiryDate);
+  const daysUntilExpiry = Math.ceil((expiry.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
+  
+  if (daysUntilExpiry <= 0) {
+    expiryStatus = {
+      label: 'Expiré',
+      class: 'bg-rust text-cream',
+      message: 'Ce produit a dépassé sa date de péremption.'
+    };
+  } else if (daysUntilExpiry <= 7) {
+    expiryStatus = {
+      label: 'Bientôt expiré',
+      class: 'bg-rust/30 text-night',
+      message: `Expire dans ${daysUntilExpiry} jour${daysUntilExpiry > 1 ? 's' : ''}.`
+    };
+  } else {
+    expiryStatus = {
+      label: 'Valide',
+      class: 'bg-pastel-green/30 text-night',
+      message: `Expire dans ${daysUntilExpiry} jours.`
+    };
+  }
+}
+---
+
+<BaseLayout title={item ? `${item.attributes.name} | Économat` : 'Article non trouvé | Économat'}>
+  <div class="mb-8">
+    <a href="/items" class="inline-flex items-center text-petrol hover-underline">
+      <span class="mr-1">&larr;</span>
+      <span>Retour à la liste</span>
+    </a>
+  </div>
+  
+  {error && (
+    <div class="bg-rust/10 border border-l-4 border-rust p-4 mb-8">
+      <h2 class="font-bold text-rust mb-2 text-lg">Erreur</h2>
+      <p class="text-sm">Impossible de charger les détails de cet article. {error}</p>
+      <p class="mt-4 text-sm">
+        <a href="/items" class="text-petrol hover-underline">Retourner à la liste des articles</a>
+      </p>
+    </div>
+  )}
+  
+  {item && (
+    <div class="bg-cream border border-night/20 overflow-hidden">
+      <!-- En-tête avec titre et actions -->
+      <div class="p-6 md:p-8 border-b border-night/10 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+        <h1 class="text-2xl md:text-3xl font-bold tracking-retro">{item.attributes.name}</h1>
+        
+        <div class="flex gap-3">
+          <a href={`/items/${id}/edit`} class="inline-flex items-center justify-center px-4 py-2 bg-petrol text-cream text-sm uppercase tracking-retro hover:bg-petrol/90 transition-colors">
+            Modifier
+          </a>
+          <button class="inline-flex items-center justify-center px-4 py-2 border border-rust text-rust text-sm uppercase tracking-retro hover:bg-rust hover:text-cream transition-colors">
+            Supprimer
+          </button>
+        </div>
+      </div>
+      
+      <!-- Corps du détail -->
+      <div class="md:flex">
+        <!-- Image du produit -->
+        <div class="md:w-1/3 p-6 md:p-8 flex items-center justify-center border-b md:border-b-0 md:border-r border-night/10">
+          {item.attributes.image?.data?.attributes?.url ? (
+            <img 
+              src={`http://localhost:1337${item.attributes.image.data.attributes.url}`} 
+              alt={item.attributes.name}
+              class="max-w-full max-h-72 object-contain"
+            />
+          ) : (
+            <div class="w-full h-48 bg-night/5 flex items-center justify-center text-night/30">
+              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" class="w-12 h-12">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+              </svg>
+            </div>
+          )}
+        </div>
+        
+        <!-- Informations détaillées -->
+        <div class="md:w-2/3 p-6 md:p-8">
+          <!-- Propriétés de base -->
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-8">
+            <div class="border-b border-night/10 pb-4">
+              <p class="text-xs uppercase tracking-retro text-night/60 mb-1">Quantité</p>
+              <p class="text-xl font-mono font-bold">{item.attributes.quantity}</p>
+            </div>
+            
+            {item.attributes.category?.data && (
+              <div class="border-b border-night/10 pb-4">
+                <p class="text-xs uppercase tracking-retro text-night/60 mb-1">Catégorie</p>
+                <p class="font-medium">
+                  <a href={`/categories/${item.attributes.category.data.id}`} class="hover:text-petrol transition-colors">
+                    {item.attributes.category.data.attributes.name}
+                  </a>
+                </p>
+              </div>
+            )}
+            
+            {item.attributes.location?.data && (
+              <div class="border-b border-night/10 pb-4">
+                <p class="text-xs uppercase tracking-retro text-night/60 mb-1">Emplacement</p>
+                <p class="font-medium">
+                  <a href={`/locations/${item.attributes.location.data.id}`} class="hover:text-petrol transition-colors">
+                    {item.attributes.location.data.attributes.name}
+                  </a>
+                </p>
+              </div>
+            )}
+            
+            {formattedExpiryDate && (
+              <div class="border-b border-night/10 pb-4">
+                <p class="text-xs uppercase tracking-retro text-night/60 mb-1">Date d'expiration</p>
+                <p class="font-medium">{formattedExpiryDate}</p>
+                {expiryStatus && (
+                  <p class={`mt-2 inline-block px-2 py-0.5 text-xs ${expiryStatus.class}`}>
+                    {expiryStatus.label} - {expiryStatus.message}
+                  </p>
+                )}
+              </div>
+            )}
+          </div>
+          
+          <!-- Description -->
+          {item.attributes.description && (
+            <div class="mb-8">
+              <h2 class="text-lg font-bold mb-2 tracking-retro">Description</h2>
+              <div class="prose prose-sm max-w-none opacity-80">
+                <p>{item.attributes.description}</p>
+              </div>
+            </div>
+          )}
+          
+          <!-- Notes et informations complémentaires -->
+          {item.attributes.notes && (
+            <div class="bg-night/5 p-4 border-l-4 border-night/20">
+              <h3 class="text-sm font-bold mb-1 tracking-retro">Notes</h3>
+              <p class="text-sm opacity-90">{item.attributes.notes}</p>
+            </div>
+          )}
+        </div>
+      </div>
+      
+      <!-- Pied avec actions de mise à jour rapide -->
+      <div class="p-6 md:p-8 border-t border-night/10 flex flex-wrap gap-3">
+        <button class="inline-flex items-center justify-center px-4 py-2 bg-night/5 border border-night/20 text-sm hover:bg-night/10 transition-colors">
+          - Réduire quantité
+        </button>
+        <button class="inline-flex items-center justify-center px-4 py-2 bg-night/5 border border-night/20 text-sm hover:bg-night/10 transition-colors">
+          + Augmenter quantité
+        </button>
+        <button class="inline-flex items-center justify-center px-4 py-2 bg-rust/10 border border-rust/20 text-rust text-sm hover:bg-rust/20 transition-colors">
+          Marquer comme épuisé
+        </button>
+      </div>
+    </div>
+  )}
+</BaseLayout>

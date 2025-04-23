@@ -1,0 +1,412 @@
+---
+import BaseLayout from '../../../layouts/BaseLayout.astro';
+import SelectRemote from '../../../components/SelectRemote.astro';
+import '../../../styles/global.css';
+
+// Récupération de l'ID de l'article depuis les paramètres d'URL
+const { id } = Astro.params;
+
+// États du formulaire
+let formSuccess = false;
+let formError = null;
+let item = null;
+
+// Récupération des données de l'article existant
+try {
+  const response = await fetch(`http://localhost:1337/api/items/${id}?populate=*`);
+  
+  if (!response.ok) {
+    throw new Error(`Erreur lors de la récupération de l'article: ${response.status}`);
+  }
+  
+  const data = await response.json();
+  item = data.data;
+  
+} catch (error) {
+  console.error('Erreur lors de la récupération des données:', error);
+  formError = "Impossible de récupérer les données de l'article. Vérifiez l'ID ou la connexion à l'API.";
+}
+
+// Traitement de la soumission du formulaire (méthode PUT)
+if (Astro.request.method === 'POST' && item) {
+  try {
+    const formData = await Astro.request.formData();
+    
+    // Construction de l'objet de données pour la mise à jour
+    const itemData = {
+      data: {
+        name: formData.get('name'),
+        quantity: parseFloat(formData.get('quantity')),
+        unit: formData.get('unit'),
+        expiration_date: formData.get('expiration_date') || null,
+        notes: formData.get('notes') || '',
+        category: formData.get('category'),
+        location: formData.get('storage_location')
+      }
+    };
+    
+    // Envoi des données à l'API Strapi avec méthode PUT
+    const response = await fetch(`http://localhost:1337/api/items/${id}`, {
+      method: 'PUT',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(itemData)
+    });
+    
+    if (!response.ok) {
+      const errorData = await response.json();
+      throw new Error(errorData.error?.message || "Une erreur est survenue lors de la mise à jour de l'article.");
+    }
+    
+    formSuccess = true;
+    
+    // Redirection vers la liste des articles après un court délai
+    setTimeout(() => {
+      return Astro.redirect('/items');
+    }, 1500);
+    
+  } catch (error) {
+    console.error('Erreur lors de la soumission du formulaire:', error);
+    formError = error.message || "Une erreur est survenue lors de la mise à jour de l'article.";
+  }
+}
+
+// Génération d'une couleur Neo-Memphis pour les éléments décoratifs
+// Utilise l'ID de l'article comme seed pour avoir toujours la même couleur pour le même article
+const neoColors = ['neo-pink', 'neo-yellow', 'neo-blue', 'neo-mint', 'neo-peach', 'neo-lavender'];
+const accentColor = item ? neoColors[parseInt(id) % neoColors.length] : 'neo-blue';
+
+// Unités disponibles pour le select
+const units = [
+  { value: 'g', label: 'grammes (g)' },
+  { value: 'kg', label: 'kilogrammes (kg)' },
+  { value: 'L', label: 'litres (L)' },
+  { value: 'mL', label: 'millilitres (mL)' },
+  { value: 'pièce', label: 'pièce(s)' }
+];
+
+// Date minimale (aujourd'hui) pour le champ date d'expiration
+const today = new Date().toISOString().split('T')[0];
+
+// Formatage de la date d'expiration pour le champ date (si disponible)
+const formattedExpiryDate = item?.attributes?.expiration_date 
+  ? new Date(item.attributes.expiration_date).toISOString().split('T')[0]
+  : '';
+---
+
+<BaseLayout title={`Modifier ${item?.attributes?.name || 'l\'article'} - Économat`} description="Modifiez un article existant dans votre économat">
+  <div class="mb-8 md:mb-12">
+    <h2 class="text-2xl md:text-3xl font-bold mb-4 tracking-retro uppercase relative inline-block">
+      <span class="text-petrol">[</span> MODIFIER L'ARTICLE <span class="text-rust">]</span>
+      
+      <!-- Élément décoratif Neo-Memphis -->
+      <div class={`absolute -right-8 -top-8 w-16 h-16 opacity-20 bg-${accentColor} clip-circle hidden md:block`}></div>
+    </h2>
+    
+    {item && (
+      <p class="text-xl font-mono mb-2">{item.attributes.name}</p>
+    )}
+    
+    <p class="opacity-80 max-w-2xl">
+      Modifiez les informations de cet article. Les champs marqués d'un astérisque (*) sont obligatoires.
+    </p>
+  </div>
+  
+  <!-- Affichage des messages de succès ou d'erreur -->
+  {formSuccess && (
+    <div class="bg-neo-mint/10 border border-l-4 border-neo-mint p-4 mb-8 neo-alert-success">
+      <h3 class="font-bold text-neo-mint mb-2">Article modifié avec succès!</h3>
+      <p class="text-sm">Vous allez être redirigé vers la liste des articles...</p>
+    </div>
+  )}
+  
+  {formError && (
+    <div class="bg-rust/10 border border-l-4 border-rust p-4 mb-8 neo-alert-error">
+      <h3 class="font-bold text-rust mb-2">Erreur</h3>
+      <p class="text-sm">{formError}</p>
+    </div>
+  )}
+  
+  {/* Affichage du formulaire uniquement si l'article existe */}
+  {item ? (
+    <div class="bg-cream border border-night/10 p-6 md:p-8 paper-cut relative overflow-hidden">
+      <!-- Éléments décoratifs Neo-Memphis -->
+      <div class={`absolute top-0 left-0 w-full h-2 bg-${accentColor}/30`}></div>
+      <div class="absolute bottom-0 right-0 w-24 h-24 opacity-5 clip-triangle transform rotate-12 bg-night"></div>
+      <div class={`absolute top-1/2 right-0 w-3 h-12 bg-${accentColor}/40 transform -translate-y-1/2 hidden lg:block`}></div>
+      
+      <!-- Grille pointillée décorative en arrière-plan -->
+      <div class="absolute inset-0 bg-grid-dots opacity-5 pointer-events-none"></div>
+      
+      <form method="POST" class="relative z-10 neo-form">
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-0">
+          <!-- Champ Nom -->
+          <div class="form-field">
+            <label for="item-name" class="block text-sm uppercase tracking-retro mb-1 font-bold">
+              Nom de l'article <span class="text-rust">*</span>
+            </label>
+            <div class="relative">
+              <input 
+                type="text" 
+                id="item-name" 
+                name="name" 
+                required
+                value={item.attributes.name}
+                class="w-full py-2 px-3 bg-cream border border-night/30 text-sm font-mono focus:border-petrol focus:ring-1 focus:ring-petrol/30 neo-input"
+                placeholder="ex: Lait, Pain, Farine..."
+              />
+            </div>
+          </div>
+          
+          <!-- Champ Quantité avec Unité -->
+          <div class="grid grid-cols-3 gap-2">
+            <!-- Quantité -->
+            <div class="form-field col-span-1">
+              <label for="item-quantity" class="block text-sm uppercase tracking-retro mb-1 font-bold">
+                Quantité <span class="text-rust">*</span>
+              </label>
+              <input 
+                type="number" 
+                id="item-quantity" 
+                name="quantity" 
+                step="0.01"
+                min="0.01"
+                required
+                value={item.attributes.quantity}
+                class="w-full py-2 px-3 bg-cream border border-night/30 text-sm font-mono focus:border-petrol focus:ring-1 focus:ring-petrol/30 neo-input"
+                placeholder="1.5"
+              />
+            </div>
+            
+            <!-- Unité -->
+            <div class="form-field col-span-2">
+              <label for="item-unit" class="block text-sm uppercase tracking-retro mb-1 font-bold">
+                Unité <span class="text-rust">*</span>
+              </label>
+              <div class="relative">
+                <select 
+                  id="item-unit" 
+                  name="unit"
+                  required
+                  class="w-full py-2 px-3 bg-cream border border-night/30 text-sm font-mono focus:border-petrol focus:ring-1 focus:ring-petrol/30 appearance-none neo-select"
+                >
+                  <option value="" disabled>Sélectionner...</option>
+                  {units.map(unit => (
+                    <option value={unit.value} selected={item.attributes.unit === unit.value}>{unit.label}</option>
+                  ))}
+                </select>
+                <!-- Flèche stylisée Neo-Memphis -->
+                <div class="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-night">
+                  <svg class="w-4 h-4 fill-current" viewBox="0 0 20 20">
+                    <path d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z"></path>
+                  </svg>
+                </div>
+              </div>
+            </div>
+          </div>
+          
+          <!-- Date d'expiration -->
+          <div class="form-field">
+            <label for="item-expiration" class="block text-sm uppercase tracking-retro mb-1 font-bold">
+              Date d'expiration
+            </label>
+            <input 
+              type="date" 
+              id="item-expiration" 
+              name="expiration_date"
+              min={today}
+              value={formattedExpiryDate}
+              class="w-full py-2 px-3 bg-cream border border-night/30 text-sm font-mono focus:border-petrol focus:ring-1 focus:ring-petrol/30 neo-input"
+            />
+            <p class="text-xs opacity-60 mt-1">Laissez vide si pas applicable</p>
+          </div>
+          
+          <!-- Catégorie (utilisation du SelectRemote) -->
+          <SelectRemote 
+            label="Catégorie" 
+            endpoint="/api/categories" 
+            valueKey="id" 
+            labelKey="name" 
+            name="category"
+            required={true}
+            selectedValue={item.attributes.category?.data?.id}
+          />
+          
+          <!-- Emplacement (utilisation du SelectRemote) -->
+          <SelectRemote 
+            label="Lieu de stockage" 
+            endpoint="/api/locations" 
+            valueKey="id" 
+            labelKey="name" 
+            name="storage_location"
+            required={true}
+            selectedValue={item.attributes.location?.data?.id}
+          />
+          
+          <!-- Notes (textarea pleine largeur) -->
+          <div class="form-field md:col-span-2">
+            <label for="item-notes" class="block text-sm uppercase tracking-retro mb-1 font-bold">
+              Notes
+            </label>
+            <textarea 
+              id="item-notes" 
+              name="notes" 
+              rows="3"
+              class="w-full py-2 px-3 bg-cream border border-night/30 text-sm font-mono focus:border-petrol focus:ring-1 focus:ring-petrol/30 neo-input"
+              placeholder="Notes supplémentaires sur cet article..."
+            >{item.attributes.notes}</textarea>
+          </div>
+        </div>
+        
+        <!-- Ligne séparatrice décorative Neo-Memphis -->
+        <div class="my-6 flex items-center">
+          <div class={`flex-grow h-px bg-${accentColor}/30`}></div>
+          <div class={`mx-4 w-3 h-3 bg-${accentColor}/60`}></div>
+          <div class="flex-grow h-px bg-night/10"></div>
+        </div>
+        
+        <!-- Boutons d'action -->
+        <div class="flex flex-col sm:flex-row justify-center sm:justify-between gap-4 items-center mt-6">
+          <div class="flex flex-col sm:flex-row gap-2">
+            <a 
+              href={`/items/${id}`} 
+              class="px-6 py-2 border border-night/30 font-bold tracking-wider uppercase text-sm hover:bg-night/5 transition-colors text-center sm:text-left neo-btn-secondary"
+            >
+              Annuler
+            </a>
+            
+            <a 
+              href="/items" 
+              class="px-6 py-2 font-bold tracking-wider uppercase text-sm hover:underline transition-all text-center sm:text-left text-night/70"
+            >
+              ← Retour à la liste
+            </a>
+          </div>
+          
+          <button 
+            type="submit" 
+            class={`px-8 py-3 bg-petrol text-cream font-bold uppercase tracking-retro hover:bg-${accentColor} transition-colors duration-300 neo-btn-primary relative overflow-hidden`}
+          >
+            <!-- Élément décoratif Neo-Memphis -->
+            <div class="absolute top-0 left-0 w-2 h-full bg-white/10"></div>
+            <span class="relative z-10">💾 Enregistrer les modifications</span>
+          </button>
+        </div>
+      </form>
+    </div>
+  ) : (
+    <div class="bg-cream border border-night/10 p-6 md:p-8 paper-cut relative overflow-hidden flex flex-col items-center justify-center py-16">
+      <div class="w-16 h-16 border-4 border-t-4 border-t-petrol border-night/20 rounded-full animate-spin mb-6"></div>
+      <p class="text-lg font-mono">Chargement de l'article...</p>
+      <p class="text-sm opacity-70 mt-2">Si le chargement persiste, vérifiez votre connexion ou l'ID de l'article.</p>
+    </div>
+  )}
+</BaseLayout>
+
+<style>
+  /* Styles Neo-Memphis pour le formulaire */
+  .neo-input,
+  .neo-select {
+    transition: all 0.2s ease;
+    border-radius: 0;
+  }
+  
+  .neo-input:focus,
+  .neo-select:focus {
+    outline: none;
+    box-shadow: 3px 3px 0 rgba(13, 75, 89, 0.1);
+    transform: translate(-1px, -1px);
+  }
+  
+  .form-field {
+    margin-bottom: 1.5rem;
+  }
+  
+  /* Animation pour les alertes */
+  .neo-alert-success,
+  .neo-alert-error {
+    position: relative;
+    overflow: hidden;
+  }
+  
+  .neo-alert-success::before,
+  .neo-alert-error::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.1), transparent);
+    animation: shimmer 2s infinite;
+    transform: translateX(-100%);
+  }
+  
+  @keyframes shimmer {
+    100% {
+      transform: translateX(100%);
+    }
+  }
+  
+  /* Boutons avec effet Neo-Memphis */
+  .neo-btn-primary {
+    position: relative;
+    transition: all 0.3s ease;
+  }
+  
+  .neo-btn-primary:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 0 rgba(10, 11, 12, 0.1);
+  }
+  
+  .neo-btn-secondary {
+    position: relative;
+    transition: all 0.2s ease;
+  }
+  
+  .neo-btn-secondary:hover {
+    transform: translateY(-1px);
+  }
+  
+  .neo-btn-secondary::after {
+    content: '';
+    position: absolute;
+    bottom: -2px;
+    left: 0;
+    width: 100%;
+    height: 1px;
+    background-color: currentColor;
+    opacity: 0.2;
+    transform: scaleX(0.7);
+    transition: transform 0.3s ease;
+    transform-origin: center;
+  }
+  
+  .neo-btn-secondary:hover::after {
+    transform: scaleX(1);
+  }
+  
+  /* Style pour les éléments décoratifs */
+  .clip-circle {
+    clip-path: circle(50% at 50% 50%);
+  }
+  
+  .clip-triangle {
+    clip-path: polygon(50% 0%, 0% 100%, 100% 100%);
+  }
+  
+  /* Animation subtile pour le formulaire au focus */
+  .neo-form:focus-within {
+    animation: pulse-border 1.5s infinite alternate;
+  }
+  
+  @keyframes pulse-border {
+    0% {
+      box-shadow: 0 0 0 0 rgba(13, 75, 89, 0);
+    }
+    100% {
+      box-shadow: 0 0 0 4px rgba(13, 75, 89, 0.05);
+    }
+  }
+</style>

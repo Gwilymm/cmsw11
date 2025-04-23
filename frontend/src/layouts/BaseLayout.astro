@@ -1,0 +1,246 @@
+---
+// Propriétés du layout
+interface Props {
+  title: string;
+  description?: string;
+}
+
+// Valeurs par défaut et déstructuration des props
+const { 
+  title = "Économat - Années 80", 
+  description = "Système d'inventaire rétro inspiré des années 80 pour gérer vos placards, frigo et légumes" 
+} = Astro.props;
+
+// Variables globales
+const currentYear = new Date().getFullYear();
+---
+
+<html lang="fr" class="scroll-smooth">
+  <head>
+    <meta charset="utf-8" />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <meta name="viewport" content="width=device-width" />
+    <meta name="generator" content={Astro.generator} />
+    <meta name="description" content={description} />
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;700&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+    <title>{title}</title>
+  </head>
+  <body class="bg-cream text-night font-mono leading-relaxed antialiased">
+    <div class="scanline crt-effect min-h-screen flex flex-col">
+      <!-- En-tête avec éléments graphiques Neo-Memphis -->
+      <header class="pt-print pb-8 md:pt-12 md:pb-10 border-b border-night/20 relative overflow-hidden">
+        <!-- Fond à motifs subtils Neo-Memphis -->
+        <div class="absolute top-0 left-0 w-full h-full bg-neo-dots opacity-30 pointer-events-none"></div>
+        
+        <!-- Formes géométriques Neo-Memphis -->
+        <div class="absolute top-6 left-8 w-16 h-16 bg-neo-yellow/20 clip-triangle transform -rotate-12 hidden md:block"></div>
+        <div class="absolute bottom-4 right-10 w-10 h-10 bg-neo-blue/20 clip-circle hidden md:block"></div>
+        
+        <div class="container mx-auto px-4 md:px-8 max-w-4xl relative">
+          <div class="text-center">
+            <div class="mb-2">
+              <span class="inline-block px-3 py-1 bg-petrol text-cream text-xs tracking-retro neo-border-sm">ÉCONOMAT RÉTRO</span>
+            </div>
+            <h1 class="text-3xl md:text-5xl font-bold tracking-retro uppercase font-display glitch-hover relative">
+              <a href="/" class="hover:text-shadow-glitch transition-all duration-300">
+                <span class="text-petrol">[</span> ÉCONOMAT <span class="text-rust">]</span>
+              </a>
+              <!-- Badge décoratif Neo-Memphis -->
+              <span class="absolute -top-1 -right-12 text-neo-pink text-xs uppercase tracking-wider px-2 py-1 transform rotate-12 hidden md:inline-block">Est. 1984</span>
+            </h1>
+            <p class="text-sm md:text-base tracking-wide mt-2 opacity-75 max-w-lg mx-auto">
+              Système d'inventaire • <span class="text-neo-mint">Est. 1984</span>
+            </p>
+            
+            <!-- Navigation principale avec accents Neo-Memphis -->
+            <nav class="mt-8 relative">
+              <ul class="flex flex-wrap justify-center gap-2 md:gap-6">
+                <li>
+                  <a href="/" class="neo-nav-link px-3 py-1 hover:bg-night/5 transition-colors duration-200">
+                    <span class="text-petrol">&lt;</span> Accueil <span class="text-petrol">&gt;</span>
+                  </a>
+                </li>
+                <li>
+                  <a href="/items" class="neo-nav-link px-3 py-1 hover:bg-night/5 transition-colors duration-200">
+                    <span class="text-rust">&lt;</span> Articles <span class="text-rust">&gt;</span>
+                  </a>
+                </li>
+                <li>
+                  <a href="/categories" class="neo-nav-link px-3 py-1 hover:bg-night/5 transition-colors duration-200">
+                    <span class="text-neo-blue">&lt;</span> Catégories <span class="text-neo-blue">&gt;</span>
+                  </a>
+                </li>
+                <li>
+                  <a href="/locations" class="neo-nav-link px-3 py-1 hover:bg-night/5 transition-colors duration-200">
+                    <span class="text-neo-mint">&lt;</span> Emplacements <span class="text-neo-mint">&gt;</span>
+                  </a>
+                </li>
+              </ul>
+            </nav>
+          </div>
+        </div>
+      </header>
+
+      <!-- Contenu principal -->
+      <main class="flex-grow py-print relative">
+        <!-- Ligne décorative zigzag en haut du contenu -->
+        <div class="absolute top-0 left-0 w-full h-[6px] overflow-hidden">
+          <div class="bg-zigzag w-full h-full opacity-20"></div>
+        </div>
+        
+        <div class="container mx-auto px-4 md:px-8 max-w-4xl">
+          <slot />
+        </div>
+      </main>
+
+      <!-- Pied de page avec éléments Neo-Memphis -->
+      <footer class="py-8 border-t border-night/20 relative overflow-hidden">
+        <!-- Motifs géométriques subtils -->
+        <div class="absolute bottom-0 right-0 w-full h-full bg-neo-dots opacity-10 pointer-events-none"></div>
+        <div class="absolute bottom-4 left-8 w-12 h-12 bg-neo-peach/20 clip-rhombus hidden md:block"></div>
+        
+        <div class="container mx-auto px-4 md:px-8 max-w-4xl">
+          <div class="flex flex-col md:flex-row justify-between items-center">
+            <div class="mb-4 md:mb-0">
+              <p class="text-sm opacity-70">© {currentYear} ÉCONOMAT OS - Tous droits réservés</p>
+            </div>
+            <div class="flex gap-6">
+              <a href="#" class="text-night hover:text-neo-pink transition-colors duration-300 hover-underline text-sm">
+                Twitter
+              </a>
+              <a href="#" class="text-night hover:text-neo-blue transition-colors duration-300 hover-underline text-sm">
+                Instagram
+              </a>
+              <a href="#" class="text-night hover:text-neo-mint transition-colors duration-300 hover-underline text-sm">
+                GitHub
+              </a>
+            </div>
+          </div>
+        </div>
+      </footer>
+    </div>
+
+    <style is:global>
+      /* Animation d'écriture typewriter */
+      @keyframes blink {
+        0%, 100% { opacity: 1; }
+        50% { opacity: 0; }
+      }
+
+      .typewriter-text p::after {
+        content: '';
+        display: inline-block;
+        width: 0.5em;
+        height: 1em;
+        background-color: currentColor;
+        animation: blink 1s step-end infinite;
+        margin-left: 0.2em;
+        vertical-align: text-bottom;
+      }
+      
+      /* Effet CRT */
+      .crt-effect {
+        position: relative;
+        overflow: hidden;
+      }
+      
+      .crt-effect::before {
+        content: " ";
+        position: absolute;
+        top: 0;
+        left: 0;
+        bottom: 0;
+        right: 0;
+        background: linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.1) 50%);
+        background-size: 100% 4px;
+        pointer-events: none;
+        z-index: 50;
+      }
+      
+      .scanline::after {
+        content: " ";
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 6px;
+        background: rgba(255, 255, 255, 0.1);
+        opacity: 0.75;
+        z-index: 51;
+        animation: scanline 10s linear infinite;
+        pointer-events: none;
+      }
+      
+      .hover-underline {
+        position: relative;
+      }
+      
+      .hover-underline::after {
+        content: '';
+        position: absolute;
+        width: 0;
+        height: 1px;
+        bottom: -2px;
+        left: 0;
+        background-color: currentColor;
+        transition: width 0.3s ease-in-out;
+      }
+      
+      .hover-underline:hover::after {
+        width: 100%;
+      }
+      
+      .glitch-hover:hover {
+        animation: glitch 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94) both;
+      }
+      
+      @keyframes glitch {
+        0% { transform: translate(0); }
+        20% { transform: translate(-2px, 2px); }
+        40% { transform: translate(-2px, -2px); }
+        60% { transform: translate(2px, 2px); }
+        80% { transform: translate(2px, -2px); }
+        100% { transform: translate(0); }
+      }
+      
+      /* Styles Neo-Memphis */
+      .neo-nav-link {
+        position: relative;
+      }
+      
+      .neo-nav-link::after {
+        content: '';
+        position: absolute;
+        bottom: -2px;
+        left: 50%;
+        width: 0;
+        height: 2px;
+        background-color: currentColor;
+        transition: all 0.3s ease;
+        transform: translateX(-50%);
+      }
+      
+      .neo-nav-link:hover::after {
+        width: 80%;
+      }
+      
+      .neo-border-sm {
+        position: relative;
+        transition: all 0.2s ease;
+      }
+      
+      .neo-border-sm:hover {
+        transform: translate(-1px, -1px);
+        box-shadow: 3px 3px 0 rgba(10, 11, 12, 0.2);
+      }
+      
+      /* Animation des formes */
+      @keyframes float {
+        0%, 100% { transform: translateY(0); }
+        50% { transform: translateY(-10px); }
+      }
+    </style>
+  </body>
+</html>

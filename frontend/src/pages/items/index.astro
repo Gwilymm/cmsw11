@@ -1,0 +1,218 @@
+---
+import BaseLayout from '../../layouts/BaseLayout.astro';
+import ItemCard from '../../components/ItemCard.astro';
+import '../../styles/global.css';
+
+// Fonction pour récupérer les données depuis l'API Strapi
+async function fetchItems() {
+  try {
+    const response = await fetch('http://localhost:1337/api/items?populate=category,location');
+    const data = await response.json();
+    
+    if (!data || !data.data) {
+      console.error('Données invalides reçues de l\'API Strapi');
+      return [];
+    }
+    
+    return data.data;
+  } catch (error) {
+    console.error('Erreur lors de la récupération des items:', error);
+    return [];
+  }
+}
+
+// Récupération des données
+let items = [];
+let error = null;
+
+try {
+  items = await fetchItems();
+} catch (e) {
+  error = "Impossible de se connecter à l'API Strapi. Assurez-vous que le serveur est en cours d'exécution sur localhost:1337.";
+  console.error(error);
+}
+
+// Récupération des filtres depuis l'URL
+const { searchParams } = Astro.url;
+const categoryFilter = searchParams.get('category');
+const locationFilter = searchParams.get('location');
+
+// Application des filtres si nécessaire
+let filteredItems = [...items];
+
+if (categoryFilter) {
+  filteredItems = filteredItems.filter(item => 
+    item.attributes.category?.data?.id.toString() === categoryFilter
+  );
+}
+
+if (locationFilter) {
+  filteredItems = filteredItems.filter(item => 
+    item.attributes.location?.data?.id.toString() === locationFilter
+  );
+}
+
+// Extraction des catégories et lieux uniques pour les filtres
+const uniqueCategories = [...new Set(
+  items
+    .filter(item => item.attributes.category?.data)
+    .map(item => ({
+      id: item.attributes.category.data.id,
+      name: item.attributes.category.data.attributes.name
+    }))
+    .map(JSON.stringify)
+)].map(JSON.parse);
+
+const uniqueLocations = [...new Set(
+  items
+    .filter(item => item.attributes.location?.data)
+    .map(item => ({
+      id: item.attributes.location.data.id,
+      name: item.attributes.location.data.attributes.name
+    }))
+    .map(JSON.stringify)
+)].map(JSON.parse);
+---
+
+<BaseLayout title="Articles - Économat" description="Liste des articles disponibles dans mon économat">
+  <div class="mb-8 md:mb-12">
+    <h2 class="text-2xl md:text-3xl font-bold mb-4 tracking-retro uppercase">
+      <span class="text-petrol">[</span> CATALOGUE <span class="text-rust">]</span>
+    </h2>
+    <p class="opacity-80 max-w-2xl">
+      Consultez notre inventaire complet d'articles. Utilisez les filtres ci-dessous pour affiner votre recherche par catégorie ou lieu de stockage.
+    </p>
+  </div>
+  
+  <!-- Zone de filtre -->
+  <div class="bg-night/5 p-4 md:p-6 mb-8 md:mb-10 flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+    <div class="flex flex-wrap gap-3">
+      <div class="filter-group">
+        <label for="category-filter" class="block text-xs uppercase tracking-retro mb-1">Catégorie</label>
+        <select 
+          id="category-filter" 
+          class="py-1 px-3 bg-cream border border-night/30 text-sm font-mono focus:border-petrol"
+          onchange="window.location.href = this.value"
+        >
+          <option value="/items">Toutes les catégories</option>
+          {uniqueCategories.map((category) => (
+            <option 
+              value={`/items?category=${category.id}${locationFilter ? `&location=${locationFilter}` : ''}`}
+              selected={categoryFilter === category.id.toString()}
+            >
+              {category.name}
+            </option>
+          ))}
+        </select>
+      </div>
+      
+      <div class="filter-group">
+        <label for="location-filter" class="block text-xs uppercase tracking-retro mb-1">Emplacement</label>
+        <select 
+          id="location-filter" 
+          class="py-1 px-3 bg-cream border border-night/30 text-sm font-mono focus:border-petrol"
+          onchange="window.location.href = this.value"
+        >
+          <option value={categoryFilter ? `/items?category=${categoryFilter}` : '/items'}>
+            Tous les emplacements
+          </option>
+          {uniqueLocations.map((location) => (
+            <option 
+              value={`/items?location=${location.id}${categoryFilter ? `&category=${categoryFilter}` : ''}`}
+              selected={locationFilter === location.id.toString()}
+            >
+              {location.name}
+            </option>
+          ))}
+        </select>
+      </div>
+    </div>
+    
+    <a 
+      href="/items" 
+      class="text-xs uppercase tracking-retro px-3 py-1.5 border border-night/20 hover:bg-night hover:text-cream transition-colors"
+      class:list={{ hidden: !categoryFilter && !locationFilter }}
+    >
+      <span class="font-bold">X</span> Réinitialiser les filtres
+    </a>
+  </div>
+  
+  {error && (
+    <div class="bg-rust/10 border border-l-4 border-rust p-4 mb-8">
+      <h3 class="font-bold text-rust mb-2">Erreur de connexion</h3>
+      <p class="text-sm">{error}</p>
+      <p class="mt-2 text-sm">
+        Assurez-vous que le serveur Strapi est démarré et accessible sur http://localhost:1337.
+      </p>
+    </div>
+  )}
+  
+  {!error && filteredItems.length === 0 && (
+    <div class="bg-night/5 border border-night/20 p-8 mb-8 text-center">
+      <h3 class="text-xl font-bold mb-2">Aucun article trouvé</h3>
+      <p class="opacity-80 mb-4">
+        Aucun article ne correspond à vos critères de recherche.
+      </p>
+      <a 
+        href="/items" 
+        class="inline-flex items-center text-petrol hover-underline"
+      >
+        <span>Voir tous les articles</span>
+        <span class="ml-1">→</span>
+      </a>
+    </div>
+  )}
+  
+  <!-- Grille des articles -->
+  <div class="grid grid-cols-1 gap-6">
+    {filteredItems.map((item) => (
+      <ItemCard
+        id={item.id}
+        name={item.attributes.name}
+        quantity={item.attributes.quantity}
+        category={item.attributes.category?.data ? {
+          id: item.attributes.category.data.id,
+          name: item.attributes.category.data.attributes.name
+        } : undefined}
+        location={item.attributes.location?.data ? {
+          id: item.attributes.location.data.id,
+          name: item.attributes.location.data.attributes.name
+        } : undefined}
+        expiryDate={item.attributes.expiryDate}
+        imageUrl={item.attributes.image?.data?.attributes?.url 
+          ? `http://localhost:1337${item.attributes.image.data.attributes.url}`
+          : undefined}
+      />
+    ))}
+  </div>
+  
+  <!-- Section de bas de page avec bouton d'ajout -->
+  <div class="mt-12 md:mt-16 text-center">
+    <a 
+      href="/items/new" 
+      class="inline-flex items-center justify-center px-6 py-2 bg-petrol text-cream font-bold uppercase tracking-retro hover:bg-rust transition-colors duration-300"
+    >
+      <span class="mr-2">+ Ajouter un article</span>
+    </a>
+  </div>
+</BaseLayout>
+
+<style>
+  /* Styles supplémentaires pour la page des items */
+  .filter-group {
+    position: relative;
+  }
+  
+  select {
+    appearance: none;
+    padding-right: 2rem;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' fill='currentColor' viewBox='0 0 16 16'%3E%3Cpath d='M2 5l6 6 6-6H2z'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 0.5rem center;
+    background-size: 16px 12px;
+  }
+  
+  .hidden {
+    display: none;
+  }
+</style>
