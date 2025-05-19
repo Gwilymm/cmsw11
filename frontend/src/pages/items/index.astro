@@ -3,6 +3,14 @@ import BaseLayout from '../../layouts/BaseLayout.astro';
 import ItemCard from '../../components/ItemCard.astro';
 import '../../styles/global.css';
 
+// Fonction utilitaire pour vérifier l'auth côté client (token JWT dans localStorage)
+function isAuthenticated() {
+  if (typeof window !== 'undefined') {
+    return !!window.localStorage.getItem('jwt');
+  }
+  return false;
+}
+
 // Fonction pour récupérer les données depuis l'API Strapi
 async function fetchItems() {
   try {
@@ -53,25 +61,23 @@ if (locationFilter) {
 }
 
 // Extraction des catégories et lieux uniques pour les filtres
-const uniqueCategories = [...new Set(
+const uniqueCategories = (Array.from(new Set(
   items
-    .filter(item => item.attributes.category?.data)
-    .map(item => ({
+    .filter((item: any) => item.attributes.category?.data)
+    .map((item: any) => JSON.stringify({
       id: item.attributes.category.data.id,
       name: item.attributes.category.data.attributes.name
     }))
-    .map(JSON.stringify)
-)].map(JSON.parse);
+)) as string[]).map((str) => JSON.parse(str));
 
-const uniqueLocations = [...new Set(
+const uniqueLocations = (Array.from(new Set(
   items
-    .filter(item => item.attributes.location?.data)
-    .map(item => ({
+    .filter((item: any) => item.attributes.location?.data)
+    .map((item: any) => JSON.stringify({
       id: item.attributes.location.data.id,
       name: item.attributes.location.data.attributes.name
     }))
-    .map(JSON.stringify)
-)].map(JSON.parse);
+)) as string[]).map((str) => JSON.parse(str));
 ---
 
 <BaseLayout title="Articles - Économat" description="Liste des articles disponibles dans mon économat">
@@ -196,6 +202,16 @@ const uniqueLocations = [...new Set(
     </a>
   </div>
 </BaseLayout>
+
+<script type="module">
+  function checkAuthAndRedirect() {
+    const jwt = window.localStorage.getItem('jwt');
+    if (!jwt) {
+      window.location.href = '/auth/login';
+    }
+  }
+  checkAuthAndRedirect();
+</script>
 
 <style>
   /* Styles supplémentaires pour la page des items */

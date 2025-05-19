@@ -1,0 +1,28 @@
+---
+import BaseLayout from '../../layouts/BaseLayout.astro';
+import '../../styles/global.css';
+
+// Page d'exemple pour les articles (utilisateur non connecté)
+---
+
+<BaseLayout title="Aperçu des articles" description="Exemple d'accès restreint">
+  <div class="max-w-xl mx-auto py-16 text-center">
+    <h1 class="text-3xl font-bold mb-6">Accès restreint</h1>
+    <p class="mb-6">Vous devez être connecté pour consulter la liste complète des articles.</p>
+    <div class="mb-8">
+      <h2 class="text-xl font-bold mb-2">Exemple d'article</h2>
+      <div class="bg-cream border border-night/10 p-6 rounded shadow-sm inline-block">
+        <h3 class="text-lg font-bold mb-2">Lait</h3>
+        <p class="text-sm opacity-80 mb-1">Catégorie : Produits laitiers</p>
+        <p class="text-xs text-night/60">Emplacement : Frigo</p>
+      </div>
+    </div>
+    <a href="/auth/login" class="px-6 py-2 bg-petrol text-cream font-bold uppercase tracking-wider neo-btn-primary hover:bg-neo-mint transition-colors">Se connecter</a>
+  </div>
+  <script type="module">
+    // Redirige uniquement si on est sur la page d'exemple ET connecté
+    if (window.localStorage.getItem('jwt') && window.location.pathname === '/items/example') {
+      window.location.href = '/items';
+    }
+  </script>
+</BaseLayout>

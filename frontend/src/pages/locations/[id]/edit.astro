@@ -1,0 +1,222 @@
+---
+import BaseLayout from '../../../layouts/BaseLayout.astro';
+import '../../../styles/global.css';
+
+const { id } = Astro.params;
+let formSuccess = false;
+let formError = null;
+let location = null;
+
+try {
+  const response = await fetch(`http://localhost:1337/api/locations/${id}`);
+  if (!response.ok) {
+    throw new Error(`Erreur lors de la récupération du lieu: ${response.status}`);
+  }
+  const data = await response.json();
+  location = data.data;
+} catch (error) {
+  console.error('Erreur lors de la récupération des données:', error);
+  formError = "Impossible de récupérer les données du lieu. Vérifiez l'ID ou la connexion à l'API.";
+}
+
+if (Astro.request.method === 'POST' && location) {
+  try {
+    const formData = await Astro.request.formData();
+    const locationData = {
+      data: {
+        name: formData.get('name'),
+        temperature_sensitive: formData.get('temperature_sensitive') === 'on'
+      }
+    };
+    const response = await fetch(`http://localhost:1337/api/locations/${id}`, {
+      method: 'PUT',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(locationData)
+    });
+    if (!response.ok) {
+      const errorData = await response.json();
+      throw new Error(errorData.error?.message || "Une erreur est survenue lors de la modification du lieu.");
+    }
+    formSuccess = true;
+    setTimeout(() => {
+      return Astro.redirect('/locations');
+    }, 1500);
+  } catch (error) {
+    console.error('Erreur lors de la soumission du formulaire:', error);
+    formError = error.message || "Une erreur est survenue lors de la modification du lieu.";
+  }
+}
+
+const neoColors = ['neo-pink', 'neo-yellow', 'neo-blue', 'neo-mint', 'neo-peach', 'neo-lavender'];
+const accentColor = neoColors[Math.floor(Math.random() * neoColors.length)];
+---
+
+<BaseLayout title="Modifier le lieu de stockage - Économat" description="Modifiez un lieu de stockage existant">
+  <div class="mb-8 md:mb-12">
+    <h2 class="text-2xl md:text-3xl font-bold mb-4 tracking-retro uppercase relative inline-block">
+      <span class="text-petrol">[</span> MODIFIER LIEU <span class="text-rust">]</span>
+      <div class={`absolute -right-8 -top-8 w-16 h-16 opacity-20 bg-${accentColor} clip-circle hidden md:block`}></div>
+    </h2>
+    <p class="opacity-80 max-w-2xl">
+      Modifiez les informations du lieu de stockage. Les champs marqués d'un astérisque (*) sont obligatoires.
+    </p>
+  </div>
+  {formSuccess && (
+    <div class="bg-neo-mint/10 border border-l-4 border-neo-mint p-4 mb-8 neo-alert-success">
+      <h3 class="font-bold text-neo-mint mb-2">Lieu modifié avec succès!</h3>
+      <p class="text-sm">Vous allez être redirigé vers la liste des lieux...</p>
+    </div>
+  )}
+  {formError && (
+    <div class="bg-rust/10 border border-l-4 border-rust p-4 mb-8 neo-alert-error">
+      <h3 class="font-bold text-rust mb-2">Erreur</h3>
+      <p class="text-sm">{formError}</p>
+    </div>
+  )}
+  {location ? (
+    <div class="bg-cream border border-night/10 p-6 md:p-8 paper-cut relative overflow-hidden">
+      <div class={`absolute top-0 left-0 w-full h-2 bg-${accentColor}/30`}></div>
+      <div class="absolute bottom-0 right-0 w-24 h-24 opacity-5 clip-triangle transform rotate-12 bg-night"></div>
+      <div class={`absolute top-1/2 right-0 w-3 h-12 bg-${accentColor}/40 transform -translate-y-1/2 hidden lg:block`}></div>
+      <div class="absolute inset-0 bg-grid-dots opacity-5 pointer-events-none"></div>
+      <form method="POST" class="relative z-10 neo-form">
+        <div class="grid grid-cols-1 gap-y-0">
+          <div class="form-field">
+            <label for="location-name" class="block text-sm uppercase tracking-retro mb-1 font-bold">
+              Nom du lieu <span class="text-rust">*</span>
+            </label>
+            <div class="relative">
+              <input
+                type="text"
+                id="location-name"
+                name="name"
+                required
+                value={location.attributes.name}
+                class="w-full py-2 px-3 bg-cream border border-night/30 text-sm font-mono focus:border-petrol focus:ring-1 focus:ring-petrol/30 neo-input"
+                placeholder="ex: Frigo, Placard, Cave..."
+              />
+            </div>
+          </div>
+          <div class="form-field flex items-center gap-2 mt-2">
+            <input
+              type="checkbox"
+              id="location-temperature"
+              name="temperature_sensitive"
+              class="neo-input"
+              checked={location.attributes.temperature_sensitive}
+            />
+            <label for="location-temperature" class="text-sm font-mono">
+              Sensible à la température (ex: réfrigéré)
+            </label>
+          </div>
+        </div>
+        <div class="my-6 flex items-center">
+          <div class={`flex-grow h-px bg-${accentColor}/30`}></div>
+          <div class={`mx-4 w-3 h-3 bg-${accentColor}/60`}></div>
+          <div class="flex-grow h-px bg-night/10"></div>
+        </div>
+        <div class="flex flex-col sm:flex-row justify-center sm:justify-between gap-4 items-center mt-6">
+          <a href="/locations" class="px-6 py-2 border border-night/30 font-bold tracking-wider uppercase text-sm hover:bg-night/5 transition-colors text-center sm:text-left neo-btn-secondary">
+            Annuler
+          </a>
+          <button type="submit" class={`px-8 py-3 bg-petrol text-cream font-bold uppercase tracking-retro hover:bg-${accentColor} transition-colors duration-300 neo-btn-primary relative overflow-hidden`}>
+            <div class="absolute top-0 left-0 w-2 h-full bg-white/10"></div>
+            <span class="relative z-10">💾 Enregistrer les modifications</span>
+          </button>
+        </div>
+      </form>
+    </div>
+  ) : (
+    <div class="bg-cream border border-night/10 p-6 md:p-8 paper-cut relative overflow-hidden flex flex-col items-center justify-center py-16">
+      <div class="w-16 h-16 border-4 border-t-4 border-t-petrol border-night/20 rounded-full animate-spin mb-6"></div>
+      <p class="text-lg font-mono">Chargement du lieu...</p>
+    </div>
+  )}
+</BaseLayout>
+
+<style>
+  .neo-input {
+    transition: all 0.2s ease;
+    border-radius: 0;
+  }
+  .neo-input:focus {
+    outline: none;
+    box-shadow: 3px 3px 0 rgba(13, 75, 89, 0.1);
+    transform: translate(-1px, -1px);
+  }
+  .form-field {
+    margin-bottom: 1.5rem;
+  }
+  .neo-alert-success,
+  .neo-alert-error {
+    position: relative;
+    overflow: hidden;
+  }
+  .neo-alert-success::before,
+  .neo-alert-error::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.1), transparent);
+    animation: shimmer 2s infinite;
+    transform: translateX(-100%);
+  }
+  @keyframes shimmer {
+    100% {
+      transform: translateX(100%);
+    }
+  }
+  .neo-btn-primary {
+    position: relative;
+    transition: all 0.3s ease;
+  }
+  .neo-btn-primary:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 0 rgba(10, 11, 12, 0.1);
+  }
+  .neo-btn-secondary {
+    position: relative;
+    transition: all 0.2s ease;
+  }
+  .neo-btn-secondary:hover {
+    transform: translateY(-1px);
+  }
+  .neo-btn-secondary::after {
+    content: '';
+    position: absolute;
+    bottom: -2px;
+    left: 0;
+    width: 100%;
+    height: 1px;
+    background-color: currentColor;
+    opacity: 0.2;
+    transform: scaleX(0.7);
+    transition: transform 0.3s ease;
+    transform-origin: center;
+  }
+  .neo-btn-secondary:hover::after {
+    transform: scaleX(1);
+  }
+  .clip-circle {
+    clip-path: circle(50% at 50% 50%);
+  }
+  .clip-triangle {
+    clip-path: polygon(50% 0%, 0% 100%, 100% 100%);
+  }
+  .neo-form:focus-within {
+    animation: pulse-border 1.5s infinite alternate;
+  }
+  @keyframes pulse-border {
+    0% {
+      box-shadow: 0 0 0 0 rgba(13, 75, 89, 0);
+    }
+    100% {
+      box-shadow: 0 0 0 4px rgba(13, 75, 89, 0.05);
+    }
+  }
+</style>

@@ -13,6 +13,14 @@ const {
 
 // Variables globales
 const currentYear = new Date().getFullYear();
+
+// Fonction utilitaire pour vérifier l'auth côté client (token JWT dans localStorage)
+function isAuthenticated() {
+  if (typeof window !== 'undefined') {
+    return !!window.localStorage.getItem('jwt');
+  }
+  return false;
+}
 ---
 
 <html lang="fr" class="scroll-smooth">
@@ -33,12 +41,22 @@ const currentYear = new Date().getFullYear();
       <header class="pt-print pb-8 md:pt-12 md:pb-10 border-b border-night/20 relative overflow-hidden">
         <!-- Fond à motifs subtils Neo-Memphis -->
         <div class="absolute top-0 left-0 w-full h-full bg-neo-dots opacity-30 pointer-events-none"></div>
-        
         <!-- Formes géométriques Neo-Memphis -->
         <div class="absolute top-6 left-8 w-16 h-16 bg-neo-yellow/20 clip-triangle transform -rotate-12 hidden md:block"></div>
+        <!-- Connexion/Inscription ou Déconnexion flottant à gauche, aligné en haut -->
+
         <div class="absolute bottom-4 right-10 w-10 h-10 bg-neo-blue/20 clip-circle hidden md:block"></div>
-        
+
         <div class="container mx-auto px-4 md:px-8 max-w-4xl relative">
+          <div id="auth-links" class="absolute top-8 left-0 md:-left-12 z-20">
+          <span id="auth-not-logged" class="text-neo-mint text-xs uppercase tracking-wider px-2 py-1 transform -rotate-12 hidden md:inline-block bg-cream/90 border border-neo-mint/30 shadow">
+            <a href="/auth/login" class="hover:underline">Connexion</a> /
+            <a href="/auth/register" class="hover:underline">Inscription</a>
+          </span>
+          <span id="auth-logged" class="text-rust text-xs uppercase tracking-wider px-2 py-1 transform -rotate-12 hidden md:inline-block bg-cream/90 border border-rust/30 shadow">
+            <button id="logout-btn" class="hover:underline bg-transparent border-none cursor-pointer p-0 m-0 text-inherit">Déconnexion</button>
+          </span>
+        </div>
           <div class="text-center">
             <div class="mb-2">
               <span class="inline-block px-3 py-1 bg-petrol text-cream text-xs tracking-retro neo-border-sm">ÉCONOMAT RÉTRO</span>
@@ -77,6 +95,7 @@ const currentYear = new Date().getFullYear();
                     <span class="text-neo-mint">&lt;</span> Emplacements <span class="text-neo-mint">&gt;</span>
                   </a>
                 </li>
+               
               </ul>
             </nav>
           </div>
@@ -242,5 +261,23 @@ const currentYear = new Date().getFullYear();
         50% { transform: translateY(-10px); }
       }
     </style>
+    <script type="module">
+      function updateAuthLinks() {
+        const jwt = window.localStorage.getItem('jwt');
+        document.getElementById('auth-not-logged').style.display = jwt ? 'none' : 'inline-block';
+        document.getElementById('auth-logged').style.display = jwt ? 'inline-block' : 'none';
+      }
+      updateAuthLinks();
+      window.addEventListener('storage', updateAuthLinks);
+      // Déconnexion
+      const logoutBtn = document.getElementById('logout-btn');
+      if (logoutBtn) {
+        logoutBtn.addEventListener('click', () => {
+          window.localStorage.removeItem('jwt');
+          updateAuthLinks();
+          window.location.href = '/';
+        });
+      }
+    </script>
   </body>
 </html>

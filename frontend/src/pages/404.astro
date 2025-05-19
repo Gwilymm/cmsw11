@@ -1,0 +1,78 @@
+---
+import BaseLayout from '../layouts/BaseLayout.astro';
+import '../styles/global.css';
+
+const { pathname } = Astro.url;
+
+// Gestion de la soumission du formulaire
+let formSuccess = false;
+let formError = null;
+
+if (Astro.request.method === 'POST') {
+  try {
+    const formData = await Astro.request.formData();
+    // Ici, vous pouvez traiter la suggestion ou le rapport d'erreur
+    // Par exemple, envoyer un email ou enregistrer dans une base de données
+    formSuccess = true;
+  } catch (error) {
+    formError = 'Erreur lors de l\'envoi du formulaire.';
+  }
+}
+---
+
+<BaseLayout title="Page non trouvée (404)" description="Erreur 404 - Page non trouvée">
+  <div class="text-center py-20 relative">
+    <h1 class="text-6xl md:text-8xl font-bold text-rust mb-4 tracking-retro">404</h1>
+    <h2 class="text-2xl md:text-3xl font-bold mb-6">Oups ! Cette page n'existe pas...</h2>
+    <p class="mb-8 opacity-80">La ressource demandée n'a pas été trouvée.<br/>Vérifiez l'URL ou retournez à l'accueil.</p>
+    <a href="/" class="inline-block px-8 py-3 bg-petrol text-cream font-bold uppercase tracking-wider rounded neo-btn-primary hover:bg-neo-mint transition-colors mb-8">Retour à l'accueil</a>
+
+    <div class="my-10">
+      <h3 class="text-lg font-bold mb-2">Signaler un problème ou suggérer une page</h3>
+      {formSuccess && (
+        <div class="bg-neo-mint/10 border border-l-4 border-neo-mint p-4 mb-4 neo-alert-success">
+          <p class="font-bold text-neo-mint">Merci pour votre retour !</p>
+        </div>
+      )}
+      {formError && (
+        <div class="bg-rust/10 border border-l-4 border-rust p-4 mb-4 neo-alert-error">
+          <p class="font-bold text-rust">{formError}</p>
+        </div>
+      )}
+      <form method="POST" class="max-w-md mx-auto bg-cream border border-night/10 p-6 rounded neo-form">
+        <div class="form-field mb-4">
+          <label for="message" class="block text-sm uppercase tracking-retro mb-1 font-bold">Votre message</label>
+          <textarea id="message" name="message" required rows="3" class="w-full py-2 px-3 bg-cream border border-night/30 text-sm font-mono focus:border-petrol focus:ring-1 focus:ring-petrol/30 neo-input" placeholder="Décrivez le problème ou suggérez une page..."></textarea>
+        </div>
+        <button type="submit" class="px-6 py-2 bg-rust text-cream font-bold uppercase tracking-wider neo-btn-primary hover:bg-petrol transition-colors">Envoyer</button>
+      </form>
+    </div>
+
+    <!-- Décorations Neo-Memphis -->
+    <div class="absolute top-0 left-0 w-24 h-24 bg-neo-yellow/20 clip-triangle -rotate-12"></div>
+    <div class="absolute bottom-0 right-0 w-24 h-24 bg-neo-blue/20 clip-circle"></div>
+  </div>
+</BaseLayout>
+
+<style>
+.clip-triangle {
+  clip-path: polygon(50% 0%, 0% 100%, 100% 100%);
+}
+.clip-circle {
+  clip-path: circle(50% at 50% 50%);
+}
+.neo-btn-primary {
+  transition: all 0.3s ease;
+}
+.neo-btn-primary:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 0 rgba(10, 11, 12, 0.1);
+}
+.neo-form:focus-within {
+  animation: pulse-border 1.5s infinite alternate;
+}
+@keyframes pulse-border {
+  0% { box-shadow: 0 0 0 0 rgba(13, 75, 89, 0); }
+  100% { box-shadow: 0 0 0 4px rgba(13, 75, 89, 0.05); }
+}
+</style>

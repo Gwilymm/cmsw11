@@ -1,4 +1,5 @@
 ---
+export const prerender = false;
 import BaseLayout from '../../layouts/BaseLayout.astro';
 import '../../styles/global.css';
 
@@ -9,23 +10,25 @@ let formError = null;
 // Traitement de la soumission du formulaire
 if (Astro.request.method === 'POST') {
   try {
+    // Vérifie le Content-Type avant d'appeler formData
+    const contentType = Astro.request.headers.get('content-type') || '';
+    if (!contentType.includes('application/x-www-form-urlencoded') && !contentType.includes('multipart/form-data')) {
+      throw new Error('Le Content-Type du formulaire n\'est pas supporté.');
+    }
     const formData = await Astro.request.formData();
-    
-    // Construction de l'objet de données pour la catégorie
-    const categoryData = {
-      data: {
-        name: formData.get('name'),
-        icon: formData.get('icon') || null
-      }
-    };
+    const urlData = new URLSearchParams();
+    urlData.append('data', JSON.stringify({
+      name: String(formData.get('name') ?? ''),
+      icon: String(formData.get('icon') ?? '')
+    }));
     
     // Envoi des données à l'API Strapi
     const response = await fetch('http://localhost:1337/api/categories', {
       method: 'POST',
       headers: {
-        'Content-Type': 'application/json',
+        'Content-Type': 'application/x-www-form-urlencoded',
       },
-      body: JSON.stringify(categoryData)
+      body: urlData.toString()
     });
     
     if (!response.ok) {
@@ -42,7 +45,7 @@ if (Astro.request.method === 'POST') {
     
   } catch (error) {
     console.error('Erreur lors de la soumission du formulaire:', error);
-    formError = error.message || "Une erreur est survenue lors de la création de la catégorie.";
+    formError = (error instanceof Error ? error.message : String(error)) || "Une erreur est survenue lors de la création de la catégorie.";
   }
 }
 
@@ -160,35 +163,35 @@ const accentColor = neoColors[Math.floor(Math.random() * neoColors.length)];
 <script>
   // Script pour la prévisualisation de la catégorie
   document.addEventListener('DOMContentLoaded', () => {
-    const nameInput = document.getElementById('category-name') as HTMLInputElement;
-    const iconInput = document.getElementById('category-icon') as HTMLInputElement;
+    const nameInput = document.getElementById('category-name');
+    const iconInput = document.getElementById('category-icon');
     const previewName = document.getElementById('preview-name');
     const previewIcon = document.getElementById('preview-icon');
-    
-    // Mise à jour du nom dans la prévisualisation
-    nameInput.addEventListener('input', (e) => {
-      const input = e.target as HTMLInputElement;
-      previewName.textContent = input.value || 'Nom de la catégorie';
-    });
-    
-    // Mise à jour de l'icône dans la prévisualisation
-    iconInput.addEventListener('input', (e) => {
-      const input = e.target as HTMLInputElement;
-      const iconValue = input.value.trim();
-      
-      if (!iconValue) {
-        previewIcon.innerHTML = '📦'; // Icône par défaut
-        return;
-      }
-      
-      // Vérifier si c'est une URL d'image
-      if (iconValue.match(/https?:\/\/.*\.(png|jpg|jpeg|gif|svg)$/i)) {
-        previewIcon.innerHTML = `<img src="${iconValue}" alt="Icône de catégorie" class="w-8 h-8 object-contain" />`;
-      } else {
-        // Sinon, on considère que c'est du texte (emoji ou texte simple)
-        previewIcon.innerHTML = iconValue;
-      }
-    });
+    if (nameInput && previewName) {
+      nameInput.addEventListener('input', (e) => {
+        const input = e.target;
+        if (input && previewName) {
+          previewName.textContent = (input instanceof HTMLInputElement ? input.value : '') || 'Nom de la catégorie';
+        }
+      });
+    }
+    if (iconInput && previewIcon) {
+      iconInput.addEventListener('input', (e) => {
+        const input = e.target;
+        if (input && previewIcon) {
+          const iconValue = (input instanceof HTMLInputElement ? input.value.trim() : '');
+          if (!iconValue) {
+            previewIcon.innerHTML = '📦'; // Icône par défaut
+            return;
+          }
+          if (iconValue.match(/https?:\/\/.*\.(png|jpg|jpeg|gif|svg)$/i)) {
+            previewIcon.innerHTML = `<img src="${iconValue}" alt="Icône de catégorie" class="w-8 h-8 object-contain" />`;
+          } else {
+            previewIcon.innerHTML = iconValue;
+          }
+        }
+      });
+    }
   });
 </script>
 
