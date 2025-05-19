@@ -1,3 +1,4 @@
+[retour sommaire](../README.md)
 # Diagramme UML – Diagramme de classes
 
 ```mermaid

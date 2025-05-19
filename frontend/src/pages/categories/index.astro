@@ -5,7 +5,7 @@ import '../../styles/global.css';
 interface Category {
   id: number;
   name?: string;
-  icon?: string;
+  icon?: string | Array<Record<string, any>> | Record<string, any>;
   [key: string]: any;
 }
 
@@ -14,7 +14,7 @@ let error = null;
 let data: any = null;
 
 try {
-  const res = await fetch('http://localhost:1337/api/categories?populate=icon');
+  const res = await fetch('http://localhost:1337/api/categories');
   if (!res.ok) {
     throw new Error('Erreur lors de la récupération des catégories');
   }
@@ -37,7 +37,7 @@ const neoColors = ['neo-pink', 'neo-yellow', 'neo-blue', 'neo-mint', 'neo-peach'
   checkAuthAndRedirect();
 </script>
 
-<BaseLayout title="Catégories - Économat" description="Liste des catégories de produits">
+<BaseLayout title="Catégories – Économat" description="Liste des catégories de produits">
   <div class="mb-8 md:mb-12">
     <h2 class="text-2xl md:text-3xl font-bold mb-4 tracking-retro uppercase relative inline-block">
       <span class="text-petrol">[</span> CATÉGORIES <span class="text-rust">]</span>
@@ -49,7 +49,10 @@ const neoColors = ['neo-pink', 'neo-yellow', 'neo-blue', 'neo-mint', 'neo-peach'
   </div>
 
   <div class="mb-8 flex flex-wrap gap-4">
-    <a href="/categories/new" class="px-6 py-2 bg-petrol text-cream font-bold uppercase tracking-retro hover:bg-neo-mint transition-colors duration-300 neo-btn-primary">
+    <a
+      href="/categories/new"
+      class="px-6 py-2 bg-petrol text-cream font-bold uppercase tracking-retro hover:bg-neo-mint transition-colors duration-300 neo-btn-primary"
+    >
       + Nouvelle catégorie
     </a>
   </div>
@@ -60,50 +63,66 @@ const neoColors = ['neo-pink', 'neo-yellow', 'neo-blue', 'neo-mint', 'neo-peach'
     </div>
   )}
 
-
-
   <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
     {categories.length === 0 && !error && (
       <div class="col-span-full text-center text-night/60 italic">Aucune catégorie trouvée.</div>
     )}
+
     {categories.map((cat, idx) => {
       const color = neoColors[idx % neoColors.length];
-      let iconUrl = null;
-	 
-      if (cat.icon) {
-        if (Array.isArray(cat.icon) && cat.icon.length > 0 && (cat.icon[0] as any)?.url) {
-          iconUrl = (cat.icon[0] as any).url;
-        } else if (typeof cat.icon === 'object' && (cat.icon as any)?.url) {
-          iconUrl = (cat.icon as any).url;
+
+      // Gestion des emojis vs médias
+      let iconUrl: string | null = null;
+      let displayEmoji: string | null = null;
+
+      if (typeof cat.icon === 'string') {
+        // Chaîne simple : emoji ou texte
+        displayEmoji = cat.icon;
+      } else if (cat.icon) {
+        // Media field : extrait l'URL
+        if (Array.isArray(cat.icon) && cat.icon.length > 0 && cat.icon[0]?.url) {
+          iconUrl = cat.icon[0].url;
+        } else if (typeof cat.icon === 'object' && cat.icon.url) {
+          iconUrl = cat.icon.url;
         }
       }
-      // Corrige l'URL si elle commence par /uploads
+
+      // Corrige l'URL si nécessaire
       if (iconUrl && iconUrl.startsWith('/uploads')) {
         iconUrl = `http://localhost:1337${iconUrl}`;
       }
+
       const name = cat.name;
-      let displayName;
-      if (name === undefined || name === null) {
-        displayName = <span class="italic text-night/40">(sans nom)</span>;
-      } else {
-        displayName = name;
-      }
+      const displayName =
+        name == null
+          ? <span class="italic text-night/40">(sans nom)</span>
+          : name;
+
       return (
-        <div class={`bg-cream border border-night/10 p-6 paper-cut relative overflow-hidden flex flex-col gap-2`}>
+        <div
+          class={`bg-cream border border-night/10 p-6 paper-cut relative overflow-hidden flex flex-col gap-2`}
+        >
           <div class={`absolute top-0 left-0 w-full h-2 bg-${color}/30`}></div>
           <div class="absolute bottom-0 right-0 w-16 h-16 opacity-10 clip-circle bg-night"></div>
+
           <div class="flex items-center gap-3 mb-2">
             <div class="icon-preview text-2xl" style="width:40px;height:40px;">
-              {iconUrl
-                ? <img src={iconUrl} alt="icône" class="w-8 h-8 object-contain" />
-                : '📦'}
+              {iconUrl ? (
+                <img src={iconUrl} alt="icône" class="w-8 h-8 object-contain" />
+              ) : displayEmoji ? (
+                displayEmoji
+              ) : (
+                '📦'
+              )}
             </div>
-            <h3 class="text-lg font-bold tracking-retro mb-0">
-              {displayName}
-            </h3>
+            <h3 class="text-lg font-bold tracking-retro mb-0">{displayName}</h3>
           </div>
+
           <div class="flex gap-2 mt-2">
-            <a href={`/categories/${cat.id}/edit`} class={`px-4 py-1 bg-${color}/20 text-sm font-mono font-bold uppercase tracking-retro hover:bg-${color}/40 transition-colors neo-btn-secondary`}>
+            <a
+              href={`/categories/${cat.id}/edit`}
+              class={`px-4 py-1 bg-${color}/20 text-sm font-mono font-bold uppercase tracking-retro hover:bg-${color}/40 transition-colors neo-btn-secondary`}
+            >
               Modifier
             </a>
           </div>

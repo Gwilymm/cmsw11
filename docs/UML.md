@@ -1,3 +1,5 @@
+[retour sommaire](../README.md)
+
 # Diagramme UML – Application de gestion d’économat
 
 ```mermaid

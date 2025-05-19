@@ -37,6 +37,32 @@ const dotGridSVG = `<svg width="70" height="70" viewBox="0 0 70 70" fill="none" 
 
 const description = "Système d'inventaire rétro inspiré des années 80 pour gérer vos placards, frigo et légumes";
 const token = Astro.cookies.get('token');
+
+// Fonction pour récupérer les statistiques depuis l'API Strapi
+async function fetchStats() {
+  try {
+    const [itemsRes, categoriesRes, locationsRes] = await Promise.all([
+      fetch('http://localhost:1337/api/items?pagination[pageSize]=1'),
+      fetch('http://localhost:1337/api/categories?pagination[pageSize]=1'),
+      fetch('http://localhost:1337/api/locations?pagination[pageSize]=1')
+    ]);
+    const [itemsJson, categoriesJson, locationsJson] = await Promise.all([
+      itemsRes.json(),
+      categoriesRes.json(),
+      locationsRes.json()
+    ]);
+    return {
+      itemsCount: itemsJson.meta?.pagination?.total ?? 0,
+      categoriesCount: categoriesJson.meta?.pagination?.total ?? 0,
+      locationsCount: locationsJson.meta?.pagination?.total ?? 0
+    };
+  } catch (error) {
+    console.error('Erreur lors de la récupération des statistiques:', error);
+    return { itemsCount: 0, categoriesCount: 0, locationsCount: 0 };
+  }
+}
+
+const { itemsCount, categoriesCount, locationsCount } = await fetchStats();
 ---
 
 <BaseLayout title="Économat - Années 80" description="Système d'inventaire rétro inspiré des années 80 pour gérer vos placards, frigo et légumes">
@@ -136,7 +162,7 @@ const token = Astro.cookies.get('token');
 					<!-- Élément décoratif -->
 					<div class="absolute top-0 left-0 w-8 h-8 bg-neo-pink/20"></div>
 					
-					<span class="block text-3xl font-mono font-bold mb-2 text-petrol">42</span>
+					<span class="block text-3xl font-mono font-bold mb-2 text-petrol">{itemsCount}</span>
 					<span class="block text-sm uppercase tracking-wider opacity-70">Articles en stock</span>
 				</div>
 				
@@ -145,7 +171,7 @@ const token = Astro.cookies.get('token');
 					<!-- Élément décoratif -->
 					<div class="absolute top-0 right-0 w-8 h-8 bg-neo-yellow/20"></div>
 					
-					<span class="block text-3xl font-mono font-bold mb-2 text-rust">8</span>
+					<span class="block text-3xl font-mono font-bold mb-2 text-rust">{categoriesCount}</span>
 					<span class="block text-sm uppercase tracking-wider opacity-70">Catégories</span>
 				</div>
 				
@@ -154,7 +180,7 @@ const token = Astro.cookies.get('token');
 					<!-- Élément décoratif -->
 					<div class="absolute bottom-0 right-0 w-8 h-8 bg-neo-blue/20"></div>
 					
-					<span class="block text-3xl font-mono font-bold mb-2 text-pastel-blue">12</span>
+					<span class="block text-3xl font-mono font-bold mb-2 text-pastel-blue">{locationsCount}</span>
 					<span class="block text-sm uppercase tracking-wider opacity-70">Emplacements</span>
 				</div>
 			</div>
@@ -233,35 +259,12 @@ const token = Astro.cookies.get('token');
 				avec notre système de gestion d'inventaire rétro et efficace.
 			</p>
 			
-			<div class="flex flex-wrap justify-center gap-4 mt-6">
-				<a href="/items/new" class="px-6 py-3 bg-night text-cream font-bold tracking-wider uppercase text-sm neo-border-sm hover:-translate-y-0.5 transition-transform">
-					+ Ajouter un article
-				</a>
-				<a href="/categories" class="px-6 py-3 border border-night/30 font-bold tracking-wider uppercase text-sm hover:bg-night/5 transition-colors">
-					Voir les catégories
-				</a>
-				<a href="/auth/login" class="px-6 py-3 bg-petrol text-cream font-bold tracking-wider uppercase text-sm neo-border-sm hover:bg-neo-mint transition-colors">
-					Se connecter
-				</a>
-				<a href="/auth/register" class="px-6 py-3 bg-neo-mint text-night font-bold tracking-wider uppercase text-sm neo-border-sm hover:bg-petrol hover:text-cream transition-colors">
-					S'inscrire
-				</a>
-			</div>
+			
 		</div>
 	</section>
 </BaseLayout>
 
-<BaseLayout title="Accueil" description={description}>
-  <div class="max-w-xl mx-auto py-16 text-center">
-    <h1 class="text-3xl font-bold mb-6">Bienvenue sur Économat</h1>
-    <p class="mb-6">Système d'inventaire rétro inspiré des années 80.</p>
-    {token ? (
-      <a href="/dashboard" class="px-6 py-2 bg-petrol text-cream font-bold uppercase tracking-wider neo-btn-primary hover:bg-neo-mint transition-colors">Accéder au dashboard</a>
-    ) : (
-      <a href="/login" class="px-6 py-2 bg-petrol text-cream font-bold uppercase tracking-wider neo-btn-primary hover:bg-neo-mint transition-colors">Se connecter</a>
-    )}
-  </div>
-</BaseLayout>
+
 
 <style>
 	/* Animations pour les formes Neo-Memphis */

@@ -1,3 +1,5 @@
+[retour sommaire](../README.md)
+
 # Documentation des routes API et Frontend
 
 ## 📦 Backend (Strapi) – API REST

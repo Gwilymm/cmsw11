@@ -1,3 +1,5 @@
+[retour sommaire](../README.md)
+
 # Diagramme UML – Diagramme de séquence
 
 ```mermaid

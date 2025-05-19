@@ -3,25 +3,16 @@ import BaseLayout from '../../layouts/BaseLayout.astro';
 import ItemCard from '../../components/ItemCard.astro';
 import '../../styles/global.css';
 
-// Fonction utilitaire pour vérifier l'auth côté client (token JWT dans localStorage)
-function isAuthenticated() {
-  if (typeof window !== 'undefined') {
-    return !!window.localStorage.getItem('jwt');
-  }
-  return false;
-}
-
 // Fonction pour récupérer les données depuis l'API Strapi
 async function fetchItems() {
   try {
-    const response = await fetch('http://localhost:1337/api/items?populate=category,location');
+    // Correction : utiliser populate=category&populate=location (Strapi v4)
+    const response = await fetch('http://localhost:1337/api/items');
     const data = await response.json();
-    
-    if (!data || !data.data) {
-      console.error('Données invalides reçues de l\'API Strapi');
+    if (!data || !Array.isArray(data.data)) {
+      console.error('Données invalides reçues de l\'API Strapi', data);
       return [];
     }
-    
     return data.data;
   } catch (error) {
     console.error('Erreur lors de la récupération des items:', error);
@@ -29,12 +20,48 @@ async function fetchItems() {
   }
 }
 
+// Fonction pour récupérer les catégories depuis l'API Strapi
+async function fetchCategories() {
+  try {
+    const response = await fetch('http://localhost:1337/api/categories?pagination[pageSize]=100');
+    const data = await response.json();
+    if (!data || !Array.isArray(data.data)) {
+      console.error('Données invalides reçues de l\'API Strapi (categories)', data);
+      return [];
+    }
+    return data.data.map(cat => ({ id: cat.id, name: cat.attributes.name }));
+  } catch (error) {
+    console.error('Erreur lors de la récupération des catégories:', error);
+    return [];
+  }
+}
+
+// Fonction pour récupérer les lieux depuis l'API Strapi
+async function fetchLocations() {
+  try {
+    const response = await fetch('http://localhost:1337/api/locations?pagination[pageSize]=100');
+    const data = await response.json();
+    if (!data || !Array.isArray(data.data)) {
+      console.error('Données invalides reçues de l\'API Strapi (locations)', data);
+      return [];
+    }
+    return data.data.map(loc => ({ id: loc.id, name: loc.attributes.name }));
+  } catch (error) {
+    console.error('Erreur lors de la récupération des lieux:', error);
+    return [];
+  }
+}
+
 // Récupération des données
 let items = [];
+let categories = [];
+let locations = [];
 let error = null;
 
 try {
   items = await fetchItems();
+  categories = await fetchCategories();
+  locations = await fetchLocations();
 } catch (e) {
   error = "Impossible de se connecter à l'API Strapi. Assurez-vous que le serveur est en cours d'exécution sur localhost:1337.";
   console.error(error);
@@ -50,34 +77,19 @@ let filteredItems = [...items];
 
 if (categoryFilter) {
   filteredItems = filteredItems.filter(item => 
-    item.attributes.category?.data?.id.toString() === categoryFilter
+    item.category?.data?.id.toString() === categoryFilter
   );
 }
 
 if (locationFilter) {
   filteredItems = filteredItems.filter(item => 
-    item.attributes.location?.data?.id.toString() === locationFilter
+    item.location?.data?.id.toString() === locationFilter
   );
 }
 
-// Extraction des catégories et lieux uniques pour les filtres
-const uniqueCategories = (Array.from(new Set(
-  items
-    .filter((item: any) => item.attributes.category?.data)
-    .map((item: any) => JSON.stringify({
-      id: item.attributes.category.data.id,
-      name: item.attributes.category.data.attributes.name
-    }))
-)) as string[]).map((str) => JSON.parse(str));
-
-const uniqueLocations = (Array.from(new Set(
-  items
-    .filter((item: any) => item.attributes.location?.data)
-    .map((item: any) => JSON.stringify({
-      id: item.attributes.location.data.id,
-      name: item.attributes.location.data.attributes.name
-    }))
-)) as string[]).map((str) => JSON.parse(str));
+// Tri alphabétique des catégories et des lieux
+const uniqueCategories = categories.sort((a, b) => a.name.localeCompare(b.name));
+const uniqueLocations = locations.sort((a, b) => a.name.localeCompare(b.name));
 ---
 
 <BaseLayout title="Articles - Économat" description="Liste des articles disponibles dans mon économat">
@@ -174,19 +186,19 @@ const uniqueLocations = (Array.from(new Set(
     {filteredItems.map((item) => (
       <ItemCard
         id={item.id}
-        name={item.attributes.name}
-        quantity={item.attributes.quantity}
-        category={item.attributes.category?.data ? {
-          id: item.attributes.category.data.id,
-          name: item.attributes.category.data.attributes.name
+        name={item.name}
+        quantity={item.quantity}
+        category={item.category?.data ? {
+          id: item.category.data.id,
+          name: item.category.data.attributes.name
         } : undefined}
-        location={item.attributes.location?.data ? {
-          id: item.attributes.location.data.id,
-          name: item.attributes.location.data.attributes.name
+        location={item.location?.data ? {
+          id: item.location.data.id,
+          name: item.location.data.attributes.name
         } : undefined}
-        expiryDate={item.attributes.expiryDate}
-        imageUrl={item.attributes.image?.data?.attributes?.url 
-          ? `http://localhost:1337${item.attributes.image.data.attributes.url}`
+        expiryDate={item.expiryDate}
+        imageUrl={item.image?.data?.attributes?.url 
+          ? `http://localhost:1337${item.image.data.attributes.url}`
           : undefined}
       />
     ))}

@@ -1,3 +1,4 @@
+[retour sommaire](../README.md)
 
 # ✅ Tâches – Connexion Astro à Strapi (Mon Économat)
 

@@ -59,8 +59,8 @@ try {
     {locations.map((location: any) => (
       <div class="bg-cream border border-night/10 p-6 rounded shadow-sm flex flex-col md:flex-row md:items-center md:justify-between">
         <div>
-          <h3 class="text-xl font-bold mb-2 tracking-retro">{location.attributes.name}</h3>
-          {location.attributes.temperature_sensitive && (
+          <h3 class="text-xl font-bold mb-2 tracking-retro">{location.name}</h3>
+          {location.temperature_sensitive && (
             <span class="inline-block px-3 py-1 bg-neo-mint/20 text-neo-mint text-xs font-mono rounded-full mr-2">Sensible à la température</span>
           )}
         </div>

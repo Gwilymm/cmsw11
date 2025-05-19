@@ -1,3 +1,5 @@
+[retour sommaire](../README.md)
+
 # Diagramme UML – Diagramme d'états (State Diagram)
 
 ```mermaid

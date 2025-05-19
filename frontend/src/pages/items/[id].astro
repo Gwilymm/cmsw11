@@ -8,7 +8,8 @@ const { id } = Astro.params;
 // Fonction pour récupérer les données d'un item spécifique
 async function fetchItem(id) {
   try {
-    const response = await fetch(`http://localhost:1337/api/items/${id}?populate=category,location,image`);
+    // Ajout du populate pour relations (Strapi v4)
+    const response = await fetch(`http://localhost:1337/api/items/${id}?populate=category&populate=storage_location`);
     const data = await response.json();
     
     if (!data || !data.data) {

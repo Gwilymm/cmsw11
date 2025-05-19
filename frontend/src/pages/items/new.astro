@@ -1,61 +1,61 @@
 ---
+export const prerender = false;
+
 import BaseLayout from '../../layouts/BaseLayout.astro';
 import SelectRemote from '../../components/SelectRemote.astro';
 import '../../styles/global.css';
 
-// Gestion de la soumission du formulaire
 let formSuccess = false;
 let formError = null;
 
 if (Astro.request.method === 'POST') {
+  const cookies = Astro.cookies;
+  const token = cookies.get('token')?.value;
+
+  // Si pas de JWT, redirection serveur immédiate vers le login
+  if (!token) {
+    const loginUrl = new URL('/auth/login', Astro.request.url).toString();
+    return Response.redirect(loginUrl, 302);
+  }
+
   try {
     const formData = await Astro.request.formData();
-    
-    // Récupération des données du formulaire
     const itemData = {
       data: {
-        name: formData.get('name'),
-        quantity: parseFloat(formData.get('quantity')),
-        unit: formData.get('unit'),
-        expiration_date: formData.get('expiration_date'),
-        notes: formData.get('notes'),
-        category: formData.get('category'),
-        location: formData.get('storage_location')
+        name: String(formData.get('name') ?? ''),
+        quantity: parseFloat(String(formData.get('quantity') ?? '0')),
+        unit: String(formData.get('unit') ?? ''),
+        expiration_date: formData.get('expiration_date') ? String(formData.get('expiration_date')) : null,
+        notes: String(formData.get('notes') ?? ''),
+        category: formData.get('category') ? parseInt(String(formData.get('category')), 10) : null,
+        storage_location: formData.get('storage_location') ? parseInt(String(formData.get('storage_location')), 10) : null
       }
     };
-    
-    // Envoi des données à l'API Strapi
-    const response = await fetch('http://localhost:1337/api/items', {
+
+    const res = await fetch('http://localhost:1337/api/items', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
+        Authorization: `Bearer ${token}`
       },
       body: JSON.stringify(itemData)
     });
-    
-    if (!response.ok) {
-      const errorData = await response.json();
-      throw new Error(errorData.error?.message || 'Une erreur est survenue lors de la création de l\'article.');
+
+    if (!res.ok) {
+      const err = await res.json();
+      throw new Error(err.error?.message || 'Une erreur est survenue lors de la création de l’article.');
     }
-    
+
     formSuccess = true;
-    
-    // Redirection vers la liste des articles après un court délai
-    setTimeout(() => {
-      return Astro.redirect('/items');
-    }, 1500);
-    
-  } catch (error) {
-    console.error('Erreur lors de la soumission du formulaire:', error);
-    formError = error.message || 'Une erreur est survenue lors de la création de l\'article.';
+  } catch (err) {
+    console.error('Erreur lors de la soumission du formulaire :', err);
+    formError = err instanceof Error ? err.message : String(err);
   }
 }
 
-// Génération d'une couleur Neo-Memphis aléatoire pour les éléments décoratifs
-const neoColors = ['neo-pink', 'neo-yellow', 'neo-blue', 'neo-mint', 'neo-peach', 'neo-lavender'];
+const neoColors = ['neo-pink','neo-yellow','neo-blue','neo-mint','neo-peach','neo-lavender'];
 const accentColor = neoColors[Math.floor(Math.random() * neoColors.length)];
 
-// Unités disponibles pour le select
 const units = [
   { value: 'g', label: 'grammes (g)' },
   { value: 'kg', label: 'kilogrammes (kg)' },
@@ -64,78 +64,70 @@ const units = [
   { value: 'pièce', label: 'pièce(s)' }
 ];
 
-// Date minimale (aujourd'hui) pour le champ date d'expiration
 const today = new Date().toISOString().split('T')[0];
 ---
 
-<BaseLayout title="Ajouter un article - Économat" description="Ajoutez un nouvel article à votre économat">
+<BaseLayout title="Ajouter un article – Économat" description="Ajoutez un nouvel article à votre économat">
   <div class="mb-8 md:mb-12">
     <h2 class="text-2xl md:text-3xl font-bold mb-4 tracking-retro uppercase relative inline-block">
       <span class="text-petrol">[</span> NOUVEL ARTICLE <span class="text-rust">]</span>
-      
-      <!-- Élément décoratif Neo-Memphis -->
       <div class={`absolute -right-8 -top-8 w-16 h-16 opacity-20 bg-${accentColor} clip-circle hidden md:block`}></div>
     </h2>
     <p class="opacity-80 max-w-2xl">
-      Utilisez ce formulaire pour ajouter un nouvel article à votre économat. Les champs marqués d'un astérisque (*) sont obligatoires.
+      Les champs marqués d’un astérisque (*) sont obligatoires.
     </p>
   </div>
-  
-  <!-- Affichage des messages de succès ou d'erreur -->
+
   {formSuccess && (
     <div class="bg-neo-mint/10 border border-l-4 border-neo-mint p-4 mb-8 neo-alert-success">
-      <h3 class="font-bold text-neo-mint mb-2">Article créé avec succès!</h3>
-      <p class="text-sm">Vous allez être redirigé vers la liste des articles...</p>
+      <h3 class="font-bold text-neo-mint mb-2">Article créé avec succès !</h3>
+      <p class="text-sm">Vous allez être redirigé vers la liste des articles…</p>
+      <script is:inline>
+        setTimeout(() => { window.location.href = '/items'; }, 1500);
+      </script>
     </div>
   )}
-  
+
   {formError && (
     <div class="bg-rust/10 border border-l-4 border-rust p-4 mb-8 neo-alert-error">
       <h3 class="font-bold text-rust mb-2">Erreur lors de la création</h3>
       <p class="text-sm">{formError}</p>
     </div>
   )}
-  
-  <!-- Formulaire de création d'article avec style Neo-Memphis -->
+
   <div class="bg-cream border border-night/10 p-6 md:p-8 paper-cut relative overflow-hidden">
-    <!-- Éléments décoratifs Neo-Memphis -->
     <div class={`absolute top-0 left-0 w-full h-2 bg-${accentColor}/30`}></div>
     <div class="absolute bottom-0 right-0 w-24 h-24 opacity-5 clip-triangle transform rotate-12 bg-night"></div>
     <div class={`absolute top-1/2 right-0 w-3 h-12 bg-${accentColor}/40 transform -translate-y-1/2 hidden lg:block`}></div>
-    
-    <!-- Grille pointillée décorative en arrière-plan -->
     <div class="absolute inset-0 bg-grid-dots opacity-5 pointer-events-none"></div>
-    
+
     <form method="POST" class="relative z-10 neo-form">
-      <div class="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-0">
-        <!-- Champ Nom -->
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-6">
+        <!-- Nom -->
         <div class="form-field">
           <label for="item-name" class="block text-sm uppercase tracking-retro mb-1 font-bold">
             Nom de l'article <span class="text-rust">*</span>
           </label>
-          <div class="relative">
-            <input 
-              type="text" 
-              id="item-name" 
-              name="name" 
-              required
-              class="w-full py-2 px-3 bg-cream border border-night/30 text-sm font-mono focus:border-petrol focus:ring-1 focus:ring-petrol/30 neo-input"
-              placeholder="ex: Lait, Pain, Farine..."
-            />
-          </div>
+          <input
+            type="text"
+            id="item-name"
+            name="name"
+            required
+            class="w-full py-2 px-3 bg-cream border border-night/30 text-sm font-mono focus:border-petrol focus:ring-1 focus:ring-petrol/30 neo-input"
+            placeholder="ex : Lait, Pain, Farine…"
+          />
         </div>
-        
-        <!-- Champ Quantité avec Unité -->
+
+        <!-- Quantité et Unité -->
         <div class="grid grid-cols-3 gap-2">
-          <!-- Quantité -->
           <div class="form-field col-span-1">
             <label for="item-quantity" class="block text-sm uppercase tracking-retro mb-1 font-bold">
               Quantité <span class="text-rust">*</span>
             </label>
-            <input 
-              type="number" 
-              id="item-quantity" 
-              name="quantity" 
+            <input
+              type="number"
+              id="item-quantity"
+              name="quantity"
               step="0.01"
               min="0.01"
               required
@@ -143,105 +135,98 @@ const today = new Date().toISOString().split('T')[0];
               placeholder="1.5"
             />
           </div>
-          
-          <!-- Unité -->
           <div class="form-field col-span-2">
             <label for="item-unit" class="block text-sm uppercase tracking-retro mb-1 font-bold">
               Unité <span class="text-rust">*</span>
             </label>
             <div class="relative">
-              <select 
-                id="item-unit" 
+              <select
+                id="item-unit"
                 name="unit"
                 required
-                class="w-full py-2 px-3 bg-cream border border-night/30 text-sm font-mono focus:border-petrol focus:ring-1 focus:ring-petrol/30 appearance-none neo-select"
+                class="w-full py-2 px-3 bg-cream border border-night/30 text-sm font-mono focus:border-petrol focus:ring-1 focus:ring-petrol/30 neo-select"
               >
-                <option value="" disabled selected>Sélectionner...</option>
-                {units.map(unit => (
-                  <option value={unit.value}>{unit.label}</option>
-                ))}
+                <option value="" disabled selected>Sélectionner…</option>
+                {units.map(u => <option value={u.value}>{u.label}</option>)}
               </select>
-              <!-- Flèche stylisée Neo-Memphis -->
               <div class="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-night">
                 <svg class="w-4 h-4 fill-current" viewBox="0 0 20 20">
-                  <path d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z"></path>
+                  <path d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z"/>
                 </svg>
               </div>
             </div>
           </div>
         </div>
-        
+
         <!-- Date d'expiration -->
         <div class="form-field">
           <label for="item-expiration" class="block text-sm uppercase tracking-retro mb-1 font-bold">
             Date d'expiration
           </label>
-          <input 
-            type="date" 
-            id="item-expiration" 
+          <input
+            type="date"
+            id="item-expiration"
             name="expiration_date"
             min={today}
             class="w-full py-2 px-3 bg-cream border border-night/30 text-sm font-mono focus:border-petrol focus:ring-1 focus:ring-petrol/30 neo-input"
           />
-          <p class="text-xs opacity-60 mt-1">Laissez vide si pas applicable</p>
+          <p class="text-xs opacity-60 mt-1">Laissez vide si non applicable</p>
         </div>
-        
-        <!-- Catégorie (utilisation du SelectRemote) -->
-        <SelectRemote 
-          label="Catégorie" 
-          endpoint="/api/categories" 
-          valueKey="id" 
-          labelKey="name" 
+
+        <!-- Catégorie -->
+        <SelectRemote client:load
+          label="Catégorie"
+          endpoint="/api/categories"
+          valueKey="id"
+          labelKey="name"
           name="category"
-          required={true}
+          required
         />
-        
-        <!-- Emplacement (utilisation du SelectRemote) -->
-        <SelectRemote 
-          label="Lieu de stockage" 
-          endpoint="/api/locations" 
-          valueKey="id" 
-          labelKey="name" 
+
+        <!-- Lieu de stockage -->
+        <SelectRemote client:load
+          label="Lieu de stockage"
+          endpoint="/api/locations"
+          valueKey="id"
+          labelKey="name"
           name="storage_location"
-          required={true}
+          required
         />
-        
-        <!-- Notes (textarea pleine largeur) -->
+
+        <!-- Notes -->
         <div class="form-field md:col-span-2">
           <label for="item-notes" class="block text-sm uppercase tracking-retro mb-1 font-bold">
             Notes
           </label>
-          <textarea 
-            id="item-notes" 
-            name="notes" 
+          <textarea
+            id="item-notes"
+            name="notes"
             rows="3"
             class="w-full py-2 px-3 bg-cream border border-night/30 text-sm font-mono focus:border-petrol focus:ring-1 focus:ring-petrol/30 neo-input"
-            placeholder="Notes supplémentaires sur cet article..."
+            placeholder="Notes supplémentaires…"
           ></textarea>
         </div>
       </div>
-      
-      <!-- Ligne séparatrice décorative Neo-Memphis -->
+
+      <!-- Séparateur -->
       <div class="my-6 flex items-center">
         <div class={`flex-grow h-px bg-${accentColor}/30`}></div>
         <div class={`mx-4 w-3 h-3 bg-${accentColor}/60`}></div>
         <div class="flex-grow h-px bg-night/10"></div>
       </div>
-      
-      <!-- Boutons d'action -->
+
+      <!-- Actions -->
       <div class="flex flex-col sm:flex-row justify-center sm:justify-between gap-4 items-center mt-6">
-        <a 
-          href="/items" 
-          class="px-6 py-2 border border-night/30 font-bold tracking-wider uppercase text-sm hover:bg-night/5 transition-colors text-center sm:text-left neo-btn-secondary"
+        <a
+          href="/items"
+          class="px-6 py-2 border border-night/30 font-bold uppercase text-sm hover:bg-night/5 transition neo-btn-secondary"
         >
           Annuler
         </a>
-        
-        <button 
-          type="submit" 
-          class={`px-8 py-3 bg-petrol text-cream font-bold uppercase tracking-retro hover:bg-${accentColor} transition-colors duration-300 neo-btn-primary relative overflow-hidden`}
+        <button
+          type="submit"
+          class={`px-8 py-3 bg-petrol text-cream font-bold uppercase hover:bg-${accentColor} transition neo-btn-primary relative overflow-hidden`}
         >
-          <!-- Élément décoratif Neo-Memphis -->
           <div class="absolute top-0 left-0 w-2 h-full bg-white/10"></div>
           <span class="relative z-10">+ Ajouter l'article</span>
         </button>
@@ -251,108 +236,54 @@ const today = new Date().toISOString().split('T')[0];
 </BaseLayout>
 
 <style>
-  /* Styles Neo-Memphis pour le formulaire */
-  .neo-input,
-  .neo-select {
+  .neo-input, .neo-select {
     transition: all 0.2s ease;
     border-radius: 0;
   }
-  
-  .neo-input:focus,
-  .neo-select:focus {
+  .neo-input:focus, .neo-select:focus {
     outline: none;
-    box-shadow: 3px 3px 0 rgba(13, 75, 89, 0.1);
+    box-shadow: 3px 3px 0 rgba(13,75,89,0.1);
     transform: translate(-1px, -1px);
   }
-  
-  .form-field {
-    margin-bottom: 1.5rem;
-  }
-  
-  /* Animation pour les alertes */
-  .neo-alert-success,
-  .neo-alert-error {
+  .form-field { margin-bottom: 1.5rem; }
+
+  .neo-alert-success, .neo-alert-error {
     position: relative;
     overflow: hidden;
   }
-  
-  .neo-alert-success::before,
-  .neo-alert-error::before {
+  .neo-alert-success::before, .neo-alert-error::before {
     content: '';
-    position: absolute;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-    background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.1), transparent);
-    animation: shimmer 2s infinite;
-    transform: translateX(-100%);
+    position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+    background: linear-gradient(90deg, transparent, rgba(255,255,255,0.1), transparent);
+    animation: shimmer 2s infinite; transform: translateX(-100%);
   }
-  
-  @keyframes shimmer {
-    100% {
-      transform: translateX(100%);
-    }
-  }
-  
-  /* Boutons avec effet Neo-Memphis */
+  @keyframes shimmer { 100% { transform: translateX(100%); } }
+
   .neo-btn-primary {
-    position: relative;
-    transition: all 0.3s ease;
+    position: relative; transition: all 0.3s ease;
   }
-  
   .neo-btn-primary:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 4px 0 rgba(10, 11, 12, 0.1);
+    transform: translateY(-2px); box-shadow: 0 4px 0 rgba(10,11,12,0.1);
   }
-  
   .neo-btn-secondary {
-    position: relative;
-    transition: all 0.2s ease;
+    position: relative; transition: all 0.2s ease;
   }
-  
-  .neo-btn-secondary:hover {
-    transform: translateY(-1px);
-  }
-  
+  .neo-btn-secondary:hover { transform: translateY(-1px); }
   .neo-btn-secondary::after {
-    content: '';
-    position: absolute;
-    bottom: -2px;
-    left: 0;
-    width: 100%;
-    height: 1px;
-    background-color: currentColor;
-    opacity: 0.2;
-    transform: scaleX(0.7);
-    transition: transform 0.3s ease;
-    transform-origin: center;
+    content: ''; position: absolute; bottom: -2px; left: 0; width: 100%; height: 1px;
+    background-color: currentColor; opacity: 0.2; transform: scaleX(0.7);
+    transition: transform 0.3s ease; transform-origin: center;
   }
-  
-  .neo-btn-secondary:hover::after {
-    transform: scaleX(1);
-  }
-  
-  /* Style pour les éléments décoratifs */
-  .clip-circle {
-    clip-path: circle(50% at 50% 50%);
-  }
-  
-  .clip-triangle {
-    clip-path: polygon(50% 0%, 0% 100%, 100% 100%);
-  }
-  
-  /* Animation subtile pour le formulaire au focus */
+  .neo-btn-secondary:hover::after { transform: scaleX(1); }
+
+  .clip-circle { clip-path: circle(50% at 50% 50%); }
+  .clip-triangle { clip-path: polygon(50% 0%,0% 100%,100% 100%); }
+
   .neo-form:focus-within {
     animation: pulse-border 1.5s infinite alternate;
   }
-  
   @keyframes pulse-border {
-    0% {
-      box-shadow: 0 0 0 0 rgba(13, 75, 89, 0);
-    }
-    100% {
-      box-shadow: 0 0 0 4px rgba(13, 75, 89, 0.05);
-    }
+    0% { box-shadow: 0 0 0 0 rgba(13,75,89,0); }
+    100% { box-shadow: 0 0 0 4px rgba(13,75,89,0.05); }
   }
 </style>

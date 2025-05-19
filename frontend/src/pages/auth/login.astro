@@ -1,27 +1,35 @@
 ---
+export const prerender = false;
 import BaseLayout from '../../layouts/BaseLayout.astro';
 import '../../styles/global.css';
 
 let error = '';
 if (Astro.request.method === 'POST') {
-  const formData = await Astro.request.formData();
-  const identifier = formData.get('identifier');
-  const password = formData.get('password');
-  try {
-    const res = await fetch('http://localhost:1337/api/auth/local', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ identifier, password })
-    });
-    const data = await res.json();
-    if (data.jwt) {
-      Astro.cookies.set('token', data.jwt, { path: '/', httpOnly: false, sameSite: 'strict' });
-      return Astro.redirect('/dashboard');
-    } else {
-      error = data.error?.message || 'Identifiants invalides';
+  // Correction : vérifier le Content-Type pour supporter les navigateurs qui envoient 'text/plain' (Astro dev server)
+  const contentType = Astro.request.headers.get('content-type') || '';
+  if (!contentType.includes('application/x-www-form-urlencoded') && !contentType.includes('multipart/form-data')) {
+    error = 'Content-Type du formulaire non supporté. Merci de réessayer.';
+  } else {
+    const formData = await Astro.request.formData();
+    const identifier = formData.get('identifier');
+    const password = formData.get('password');
+    try {
+      const res = await fetch('http://localhost:1337/api/auth/local', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ identifier, password })
+      });
+      const data = await res.json();
+      if (data.jwt) {
+        Astro.cookies.set('token', data.jwt, { path: '/', httpOnly: false, sameSite: 'strict' });
+        // Ajout d'un flag pour signaler au client de stocker le JWT dans localStorage
+        return Astro.redirect('/?jwt=' + encodeURIComponent(data.jwt));
+      } else {
+        error = data.error?.message || 'Identifiants invalides';
+      }
+    } catch {
+      error = 'Erreur de connexion au serveur';
     }
-  } catch {
-    error = 'Erreur de connexion au serveur';
   }
 }
 ---

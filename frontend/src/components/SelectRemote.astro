@@ -38,7 +38,14 @@ const fetchData = async () => {
   }
 };
 
-const items = await fetchData();
+const items: any[] = await fetchData();
+
+// Tri alphabétique des options par labelKey
+items.sort((a: any, b: any) => {
+  const labelA = (a[labelKey] ?? a.attributes?.[labelKey] ?? '').toString();
+  const labelB = (b[labelKey] ?? b.attributes?.[labelKey] ?? '').toString();
+  return labelA.localeCompare(labelB);
+});
 
 // Génération d'un ID unique pour le champ
 const fieldId = `field-${name}-${Math.random().toString(36).substring(2, 9)}`;
@@ -60,20 +67,25 @@ const fieldId = `field-${name}-${Math.random().toString(36).substring(2, 9)}`;
     >
       <option value="" disabled selected={!selectedValue}>Sélectionner...</option>
       
-      {items.map(item => (
-        <option 
-          value={item.id} 
-          selected={selectedValue && item.id.toString() === selectedValue.toString()}
-        >
-          {item.attributes[labelKey]}
-        </option>
-      ))}
+      {Array.isArray(items) && items.map((item: any) => {
+        // Gestion des structures plates ou imbriquées (Strapi)
+        const value = item[valueKey] ?? item.attributes?.[valueKey] ?? item.id;
+        const label = item[labelKey] ?? item.attributes?.[labelKey] ?? `[${labelKey} manquant]`;
+        return (
+          <option 
+            value={value} 
+            selected={!!selectedValue && value?.toString() === selectedValue.toString() ? true : undefined}
+          >
+            {label}
+          </option>
+        );
+      })}
     </select>
     
     <!-- Flèche stylisée Neo-Memphis pour le select -->
     <div class="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-night">
       <svg class="w-4 h-4 fill-current" viewBox="0 0 20 20">
-        <path d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z"></path>
+        <path d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 011.414 1.414l-4 4a1 1 01-1.414 0l-4-4a1 1 010-1.414z"></path>
       </svg>
     </div>
   </div>

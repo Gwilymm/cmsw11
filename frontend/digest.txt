@@ -1,0 +1,4080 @@
+Directory structure:
+└── frontend/
+    └── src/
+        ├── middleware.ts
+        ├── components/
+        │   ├── ItemCard.astro
+        │   ├── Login.jsx
+        │   └── SelectRemote.astro
+        ├── layouts/
+        │   └── BaseLayout.astro
+        ├── pages/
+        │   ├── 404.astro
+        │   ├── index.astro
+        │   ├── auth/
+        │   │   ├── login.astro
+        │   │   └── register.astro
+        │   ├── categories/
+        │   │   ├── example.astro
+        │   │   ├── index.astro
+        │   │   ├── new.astro
+        │   │   └── [id]/
+        │   │       └── edit.astro
+        │   ├── items/
+        │   │   ├── [id].astro
+        │   │   ├── example.astro
+        │   │   ├── index.astro
+        │   │   ├── new.astro
+        │   │   └── [id]/
+        │   │       └── edit.astro
+        │   └── locations/
+        │       ├── example.astro
+        │       ├── index.astro
+        │       ├── new.astro
+        │       └── [id]/
+        │           └── edit.astro
+        └── styles/
+            └── global.css
+
+================================================
+File: src/middleware.ts
+================================================
+import type { MiddlewareHandler } from "astro";
+
+export const onRequest: MiddlewareHandler = async (context, next) => {
+  const { request, cookies, url } = context;
+  const token = cookies.get("token")?.value;
+
+  // Protéger toutes les routes commençant par /dashboard
+  if (url.pathname.startsWith("/dashboard")) {
+    if (!token) {
+      return Response.redirect("/login", 302);
+    }
+    // Optionnel : valider le token auprès de Strapi
+    const meRes = await fetch("http://localhost:1337/api/users/me", {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    if (!meRes.ok) {
+      cookies.delete("token", { path: "/" });
+      return Response.redirect("/login", 302);
+    }
+  }
+  return next();
+};
+
+
+
+================================================
+File: src/components/ItemCard.astro
+================================================
+---
+// Définition des types pour les props du composant
+interface Props {
+  id: number;
+  name: string;
+  quantity: number;
+  category?: {
+    name: string;
+    id: number;
+  };
+  location?: {
+    name: string;
+    id: number;
+  };
+  expiryDate?: string;
+  imageUrl?: string;
+}
+
+// Récupération des props avec déstructuration
+const { 
+  id, 
+  name, 
+  quantity, 
+  category, 
+  location, 
+  expiryDate, 
+  imageUrl = "/placeholder-item.svg" 
+} = Astro.props;
+
+// Formatage de la date d'expiration si elle existe
+const formattedExpiryDate = expiryDate 
+  ? new Date(expiryDate).toLocaleDateString('fr-FR', { 
+      year: 'numeric', 
+      month: 'short', 
+      day: 'numeric' 
+    }) 
+  : null;
+
+// Calculer si l'article est bientôt expiré (moins de 7 jours)
+let isExpiringSoon = false;
+let isExpired = false;
+
+if (expiryDate) {
+  const today = new Date();
+  const expiry = new Date(expiryDate);
+  const daysUntilExpiry = Math.ceil((expiry.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
+  
+  isExpiringSoon = daysUntilExpiry <= 7 && daysUntilExpiry > 0;
+  isExpired = daysUntilExpiry <= 0;
+}
+
+// Sélection d'une couleur Neo-Memphis basée sur l'ID pour garantir la consistance
+const neoColors = ['neo-pink', 'neo-yellow', 'neo-blue', 'neo-mint', 'neo-peach', 'neo-lavender'];
+const accentColor = neoColors[id % neoColors.length] || 'neo-blue';
+
+// Formes géométriques basées sur l'ID pour la cohérence visuelle
+const shapes = ['triangle', 'circle', 'rhombus'];
+const decorShape = shapes[id % shapes.length];
+---
+
+<div class="item-card border border-night/20 p-4 md:p-6 hover:border-petrol transition-all duration-300 bg-cream relative overflow-hidden paper-cut-soft">
+  <!-- Élément décoratif Neo-Memphis en arrière-plan -->
+  <div class={`absolute ${decorShape === 'triangle' ? 'top-[-10px] right-[-10px] w-20 h-20 bg-${accentColor}/10 clip-triangle rotate-45' : 
+                         decorShape === 'circle' ? 'bottom-[-20px] right-[-20px] w-32 h-32 bg-${accentColor}/10 clip-circle' : 
+                         'top-[-15px] left-[-15px] w-24 h-24 bg-${accentColor}/10 clip-rhombus rotate-12'} 
+              opacity-50 pointer-events-none z-0`}>
+  </div>
+  
+  <!-- Ligne décorative colorée au-dessus de la carte -->
+  <div class={`h-1 w-12 bg-${accentColor} absolute top-0 left-6`}></div>
+  
+  <!-- Badge pour catégorie avec style Neo-Memphis -->
+  {category && (
+    <div class="absolute top-2 right-2 z-10">
+      <a href={`/categories/${category.id}`} 
+         class={`px-2 py-1 bg-${accentColor}/20 text-xs tracking-retro hover:bg-${accentColor}/30 transition-all duration-200 relative neo-tag`}>
+        {category.name}
+      </a>
+    </div>
+  )}
+
+  <div class="flex items-start gap-4 relative z-10">
+    <!-- Image/icône du produit avec style paper-cut -->
+    <div class={`flex-shrink-0 w-16 h-16 md:w-20 md:h-20 bg-night/5 flex items-center justify-center relative overflow-hidden neo-image border-${accentColor}/40`}>
+      <img src={imageUrl} alt={name} class="max-w-full max-h-full object-contain relative z-10" />
+      
+      <!-- Motif de points en arrière-plan de l'image -->
+      <div class="absolute inset-0 opacity-20 bg-neo-dots pointer-events-none"></div>
+    </div>
+    
+    <!-- Détails du produit -->
+    <div class="flex-grow">
+      <h3 class="text-lg font-bold tracking-retro mb-2">
+        <a href={`/items/${id}`} class="hover:text-petrol transition-colors">
+          {name}
+        </a>
+      </h3>
+      
+      <div class="flex flex-wrap gap-x-6 gap-y-1 text-sm">
+        <!-- Quantité avec icône stylisée Neo-Memphis -->
+        <div class="flex items-center">
+          <span class="font-bold mr-2 text-petrol">QTÉ:</span>
+          <span class={`font-mono px-2 py-0.5 bg-${accentColor}/10 rounded-sm`}>{quantity}</span>
+        </div>
+        
+        <!-- Lieu de stockage -->
+        {location && (
+          <div class="flex items-center">
+            <span class="font-bold mr-2 text-petrol">LIEU:</span>
+            <a href={`/locations/${location.id}`} class="hover:text-rust transition-colors hover-underline">
+              {location.name}
+            </a>
+          </div>
+        )}
+        
+        <!-- Date d'expiration -->
+        {formattedExpiryDate && (
+          <div class="flex items-center">
+            <span class="font-bold mr-2 text-petrol">EXP:</span>
+            <span class={`font-mono ${isExpired ? 'text-rust' : isExpiringSoon ? 'text-rust/70' : ''}`}>
+              {formattedExpiryDate}
+            </span>
+          </div>
+        )}
+      </div>
+    </div>
+    
+    <!-- Bouton d'action avec style Neo-Memphis -->
+    <div class="flex-shrink-0">
+      <a href={`/items/${id}`} 
+         class={`neo-button inline-block px-3 py-1 border border-night/30 hover:border-${accentColor} hover:bg-${accentColor}/10 transition-all duration-300 text-xs uppercase tracking-retro font-bold`}>
+        Voir &raquo;
+      </a>
+    </div>
+  </div>
+  
+  <!-- Indicateur de stock bas ou expiré si nécessaire -->
+  {isExpired && (
+    <div class="mt-3 bg-rust/10 border-l-2 border-rust px-3 py-1.5 text-xs relative z-10 neo-alert">
+      <span class="font-bold text-rust">ALERTE:</span> Produit expiré !
+    </div>
+  )}
+  
+  {isExpiringSoon && (
+    <div class="mt-3 bg-rust/5 border-l-2 border-rust/70 px-3 py-1.5 text-xs relative z-10 neo-alert">
+      <span class="font-bold text-rust/70">NOTE:</span> Expire bientôt !
+    </div>
+  )}
+  
+  {quantity <= 2 && (
+    <div class="mt-3 bg-pastel-blue/10 border-l-2 border-pastel-blue px-3 py-1.5 text-xs relative z-10 neo-alert">
+      <span class="font-bold text-pastel-blue">INFO:</span> Stock bas !
+    </div>
+  )}
+</div>
+
+<style>
+  .item-card {
+    position: relative;
+    transition: all 0.3s ease;
+    will-change: transform;
+  }
+  
+  .item-card:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 3px 10px rgba(10, 11, 12, 0.07);
+  }
+
+  /* Style Neo-Memphis */
+  .neo-image {
+    position: relative;
+    border: 1px dashed;
+    transition: all 0.3s ease;
+    will-change: transform;
+  }
+  
+  .item-card:hover .neo-image {
+    transform: rotate(-2deg);
+    box-shadow: 2px 2px 0 rgba(10, 11, 12, 0.1);
+  }
+
+  .neo-button {
+    position: relative;
+    transition: all 0.2s ease;
+    overflow: hidden;
+    will-change: transform;
+  }
+  
+  .neo-button::after {
+    content: '';
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    width: 100%;
+    height: 2px;
+    background: currentColor;
+    opacity: 0.3;
+    transform: scaleX(0);
+    transform-origin: right;
+    transition: transform 0.3s ease;
+  }
+  
+  .neo-button:hover {
+    transform: translateY(-1px);
+  }
+  
+  .neo-button:hover::after {
+    transform: scaleX(1);
+    transform-origin: left;
+  }
+  
+  .neo-tag {
+    transition: all 0.2s ease;
+  }
+  
+  .neo-tag::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: -4px;
+    width: 4px;
+    height: 100%;
+    background: currentColor;
+    opacity: 0.2;
+  }
+  
+  .neo-tag:hover {
+    transform: translateX(-1px);
+  }
+  
+  .neo-alert {
+    transition: padding 0.2s ease;
+  }
+  
+  .neo-alert:hover {
+    padding-left: 1.2rem;
+  }
+</style>
+
+
+================================================
+File: src/components/Login.jsx
+================================================
+import React, { useState } from "react";
+
+export default function Login() {
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [error, setError] = useState("");
+  const [loading, setLoading] = useState(false);
+
+  async function handleSubmit(e) {
+    e.preventDefault();
+    setError("");
+    setLoading(true);
+    try {
+      const res = await fetch("http://localhost:1337/api/auth/local", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ identifier: email, password }),
+      });
+      const data = await res.json();
+      if (data.jwt) {
+        // Stocker le token dans un cookie SameSite strict
+        document.cookie = `token=${data.jwt}; Path=/; SameSite=Strict`;
+        window.location.href = "/dashboard";
+      } else {
+        setError(data.error?.message || "Identifiants invalides");
+      }
+    } catch (err) {
+      setError("Erreur de connexion au serveur");
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  return (
+    <form
+      onSubmit={handleSubmit}
+      className="max-w-md mx-auto bg-cream border border-night/10 p-6 rounded neo-form"
+    >
+      <h2 className="text-xl font-bold mb-4">Connexion</h2>
+      {error && (
+        <div className="bg-rust/10 border border-l-4 border-rust p-2 mb-4 text-rust">
+          {error}
+        </div>
+      )}
+      <div className="mb-4">
+        <label htmlFor="email" className="block text-sm font-bold mb-1">
+          Email
+        </label>
+        <input
+          type="email"
+          id="email"
+          value={email}
+          onChange={(e) => setEmail(e.target.value)}
+          required
+          className="w-full py-2 px-3 bg-cream border border-night/30 neo-input"
+        />
+      </div>
+      <div className="mb-6">
+        <label htmlFor="password" className="block text-sm font-bold mb-1">
+          Mot de passe
+        </label>
+        <input
+          type="password"
+          id="password"
+          value={password}
+          onChange={(e) => setPassword(e.target.value)}
+          required
+          className="w-full py-2 px-3 bg-cream border border-night/30 neo-input"
+        />
+      </div>
+      <button
+        type="submit"
+        className="w-full px-6 py-2 bg-petrol text-cream font-bold uppercase tracking-wider neo-btn-primary hover:bg-neo-mint transition-colors"
+        disabled={loading}
+      >
+        {loading ? "Connexion..." : "Se connecter"}
+      </button>
+    </form>
+  );
+}
+
+
+
+================================================
+File: src/components/SelectRemote.astro
+================================================
+---
+// Composant pour afficher une liste déroulante avec données chargées dynamiquement
+// Utilisé dans les formulaires pour les champs liés à des entités distantes (catégories, emplacements)
+
+interface Props {
+  label: string;       // Texte du label affiché pour le champ
+  endpoint: string;    // URL de l'API à interroger pour obtenir les options
+  valueKey: string;    // Champ à utiliser comme valeur dans l'option (généralement "id")
+  labelKey: string;    // Champ à utiliser comme texte visible dans l'option (généralement "name")
+  name: string;        // Attribut name du champ select
+  required?: boolean;  // Si le champ est obligatoire
+  selectedValue?: string | number; // Valeur pré-sélectionnée (utile pour l'édition)
+  className?: string;  // Classes CSS supplémentaires
+}
+
+const {
+  label,
+  endpoint,
+  valueKey,
+  labelKey,
+  name,
+  required = false,
+  selectedValue = '',
+  className = ''
+} = Astro.props;
+
+// Récupération des données depuis l'API
+const fetchData = async () => {
+  try {
+    const response = await fetch(`http://localhost:1337${endpoint}`);
+    if (!response.ok) throw new Error(`Erreur lors de la requête: ${response.status}`);
+    
+    const result = await response.json();
+    return result.data || [];
+  } catch (error) {
+    console.error(`Erreur lors de la récupération des données depuis ${endpoint}:`, error);
+    return [];
+  }
+};
+
+const items = await fetchData();
+
+// Génération d'un ID unique pour le champ
+const fieldId = `field-${name}-${Math.random().toString(36).substring(2, 9)}`;
+---
+
+<div class={`form-field ${className}`}>
+  <label for={fieldId} class="block text-sm uppercase tracking-retro mb-1 font-bold">
+    {label}
+    {required && <span class="text-rust ml-1">*</span>}
+  </label>
+  
+  <div class="relative">
+    <!-- Select avec style rétro Neo-Memphis -->
+    <select 
+      id={fieldId}
+      name={name}
+      class="w-full py-2 px-3 bg-cream border border-night/30 text-sm font-mono focus:border-petrol focus:ring-1 focus:ring-petrol/30 appearance-none neo-select"
+      required={required}
+    >
+      <option value="" disabled selected={!selectedValue}>Sélectionner...</option>
+      
+      {items.map(item => (
+        <option 
+          value={item.id} 
+          selected={!!selectedValue && item.id.toString() === selectedValue.toString() ? true : undefined}
+        >
+          {item.attributes?.name || `[name manquant]`}
+        </option>
+      ))}
+    </select>
+    
+    <!-- Flèche stylisée Neo-Memphis pour le select -->
+    <div class="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-night">
+      <svg class="w-4 h-4 fill-current" viewBox="0 0 20 20">
+        <path d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z"></path>
+      </svg>
+    </div>
+  </div>
+  
+  {/* Message d'erreur lorsque les données ne peuvent pas être chargées */}
+  {items.length === 0 && (
+    <p class="text-rust text-xs mt-1">
+      Impossible de charger les données. Vérifiez que l'API est accessible.
+    </p>
+  )}
+</div>
+
+<style>
+  .neo-select {
+    transition: all 0.2s ease;
+    border-radius: 0;
+  }
+  
+  .neo-select:focus {
+    outline: none;
+    box-shadow: 3px 3px 0 rgba(13, 75, 89, 0.1);
+    transform: translate(-1px, -1px);
+  }
+  
+  .form-field {
+    margin-bottom: 1.5rem;
+  }
+</style>
+
+
+================================================
+File: src/layouts/BaseLayout.astro
+================================================
+---
+// Propriétés du layout
+interface Props {
+  title: string;
+  description?: string;
+}
+
+// Valeurs par défaut et déstructuration des props
+const { 
+  title = "Économat - Années 80", 
+  description = "Système d'inventaire rétro inspiré des années 80 pour gérer vos placards, frigo et légumes" 
+} = Astro.props;
+
+// Variables globales
+const currentYear = new Date().getFullYear();
+
+// Fonction utilitaire pour vérifier l'auth côté client (token JWT dans localStorage)
+function isAuthenticated() {
+  if (typeof window !== 'undefined') {
+    return !!window.localStorage.getItem('jwt');
+  }
+  return false;
+}
+---
+
+<html lang="fr" class="scroll-smooth">
+  <head>
+    <meta charset="utf-8" />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <meta name="viewport" content="width=device-width" />
+    <meta name="generator" content={Astro.generator} />
+    <meta name="description" content={description} />
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;700&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+    <title>{title}</title>
+  </head>
+  <body class="bg-cream text-night font-mono leading-relaxed antialiased">
+    <div class="scanline crt-effect min-h-screen flex flex-col">
+      <!-- En-tête avec éléments graphiques Neo-Memphis -->
+      <header class="pt-print pb-8 md:pt-12 md:pb-10 border-b border-night/20 relative overflow-hidden">
+        <!-- Fond à motifs subtils Neo-Memphis -->
+        <div class="absolute top-0 left-0 w-full h-full bg-neo-dots opacity-30 pointer-events-none"></div>
+        <!-- Formes géométriques Neo-Memphis -->
+        <div class="absolute top-6 left-8 w-16 h-16 bg-neo-yellow/20 clip-triangle transform -rotate-12 hidden md:block"></div>
+        <!-- Connexion/Inscription ou Déconnexion flottant à gauche, aligné en haut -->
+
+        <div class="absolute bottom-4 right-10 w-10 h-10 bg-neo-blue/20 clip-circle hidden md:block"></div>
+
+        <div class="container mx-auto px-4 md:px-8 max-w-4xl relative">
+          <div id="auth-links" class="absolute top-8 left-0 md:-left-12 z-20">
+          <span id="auth-not-logged" class="text-neo-mint text-xs uppercase tracking-wider px-2 py-1 transform -rotate-12 hidden md:inline-block bg-cream/90 border border-neo-mint/30 shadow">
+            <a href="/auth/login" class="hover:underline">Connexion</a> /
+            <a href="/auth/register" class="hover:underline">Inscription</a>
+          </span>
+          <span id="auth-logged" class="text-rust text-xs uppercase tracking-wider px-2 py-1 transform -rotate-12 hidden md:inline-block bg-cream/90 border border-rust/30 shadow">
+            <button id="logout-btn" class="hover:underline bg-transparent border-none cursor-pointer p-0 m-0 text-inherit">Déconnexion</button>
+          </span>
+        </div>
+          <div class="text-center">
+            <div class="mb-2">
+              <span class="inline-block px-3 py-1 bg-petrol text-cream text-xs tracking-retro neo-border-sm">ÉCONOMAT RÉTRO</span>
+            </div>
+            <h1 class="text-3xl md:text-5xl font-bold tracking-retro uppercase font-display glitch-hover relative">
+              <a href="/" class="hover:text-shadow-glitch transition-all duration-300">
+                <span class="text-petrol">[</span> ÉCONOMAT <span class="text-rust">]</span>
+              </a>
+              <!-- Badge décoratif Neo-Memphis -->
+              <span class="absolute -top-1 -right-12 text-neo-pink text-xs uppercase tracking-wider px-2 py-1 transform rotate-12 hidden md:inline-block">Est. 1984</span>
+            </h1>
+            <p class="text-sm md:text-base tracking-wide mt-2 opacity-75 max-w-lg mx-auto">
+              Système d'inventaire • <span class="text-neo-mint">Est. 1984</span>
+            </p>
+            
+            <!-- Navigation principale avec accents Neo-Memphis -->
+            <nav class="mt-8 relative">
+              <ul class="flex flex-wrap justify-center gap-2 md:gap-6">
+                <li>
+                  <a href="/" class="neo-nav-link px-3 py-1 hover:bg-night/5 transition-colors duration-200">
+                    <span class="text-petrol">&lt;</span> Accueil <span class="text-petrol">&gt;</span>
+                  </a>
+                </li>
+                <li>
+                  <a href="/items" class="neo-nav-link px-3 py-1 hover:bg-night/5 transition-colors duration-200">
+                    <span class="text-rust">&lt;</span> Articles <span class="text-rust">&gt;</span>
+                  </a>
+                </li>
+                <li>
+                  <a href="/categories" class="neo-nav-link px-3 py-1 hover:bg-night/5 transition-colors duration-200">
+                    <span class="text-neo-blue">&lt;</span> Catégories <span class="text-neo-blue">&gt;</span>
+                  </a>
+                </li>
+                <li>
+                  <a href="/locations" class="neo-nav-link px-3 py-1 hover:bg-night/5 transition-colors duration-200">
+                    <span class="text-neo-mint">&lt;</span> Emplacements <span class="text-neo-mint">&gt;</span>
+                  </a>
+                </li>
+               
+              </ul>
+            </nav>
+          </div>
+        </div>
+      </header>
+
+      <!-- Contenu principal -->
+      <main class="flex-grow py-print relative">
+        <!-- Ligne décorative zigzag en haut du contenu -->
+        <div class="absolute top-0 left-0 w-full h-[6px] overflow-hidden">
+          <div class="bg-zigzag w-full h-full opacity-20"></div>
+        </div>
+        
+        <div class="container mx-auto px-4 md:px-8 max-w-4xl">
+          <slot />
+        </div>
+      </main>
+
+      <!-- Pied de page avec éléments Neo-Memphis -->
+      <footer class="py-8 border-t border-night/20 relative overflow-hidden">
+        <!-- Motifs géométriques subtils -->
+        <div class="absolute bottom-0 right-0 w-full h-full bg-neo-dots opacity-10 pointer-events-none"></div>
+        <div class="absolute bottom-4 left-8 w-12 h-12 bg-neo-peach/20 clip-rhombus hidden md:block"></div>
+        
+        <div class="container mx-auto px-4 md:px-8 max-w-4xl">
+          <div class="flex flex-col md:flex-row justify-between items-center">
+            <div class="mb-4 md:mb-0">
+              <p class="text-sm opacity-70">© {currentYear} ÉCONOMAT OS - Tous droits réservés</p>
+            </div>
+            <div class="flex gap-6">
+              <a href="#" class="text-night hover:text-neo-pink transition-colors duration-300 hover-underline text-sm">
+                Twitter
+              </a>
+              <a href="#" class="text-night hover:text-neo-blue transition-colors duration-300 hover-underline text-sm">
+                Instagram
+              </a>
+              <a href="#" class="text-night hover:text-neo-mint transition-colors duration-300 hover-underline text-sm">
+                GitHub
+              </a>
+            </div>
+          </div>
+        </div>
+      </footer>
+    </div>
+
+    <style is:global>
+      /* Animation d'écriture typewriter */
+      @keyframes blink {
+        0%, 100% { opacity: 1; }
+        50% { opacity: 0; }
+      }
+
+      .typewriter-text p::after {
+        content: '';
+        display: inline-block;
+        width: 0.5em;
+        height: 1em;
+        background-color: currentColor;
+        animation: blink 1s step-end infinite;
+        margin-left: 0.2em;
+        vertical-align: text-bottom;
+      }
+      
+      /* Effet CRT */
+      .crt-effect {
+        position: relative;
+        overflow: hidden;
+      }
+      
+      .crt-effect::before {
+        content: " ";
+        position: absolute;
+        top: 0;
+        left: 0;
+        bottom: 0;
+        right: 0;
+        background: linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.1) 50%);
+        background-size: 100% 4px;
+        pointer-events: none;
+        z-index: 50;
+      }
+      
+      .scanline::after {
+        content: " ";
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 6px;
+        background: rgba(255, 255, 255, 0.1);
+        opacity: 0.75;
+        z-index: 51;
+        animation: scanline 10s linear infinite;
+        pointer-events: none;
+      }
+      
+      .hover-underline {
+        position: relative;
+      }
+      
+      .hover-underline::after {
+        content: '';
+        position: absolute;
+        width: 0;
+        height: 1px;
+        bottom: -2px;
+        left: 0;
+        background-color: currentColor;
+        transition: width 0.3s ease-in-out;
+      }
+      
+      .hover-underline:hover::after {
+        width: 100%;
+      }
+      
+      .glitch-hover:hover {
+        animation: glitch 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94) both;
+      }
+      
+      @keyframes glitch {
+        0% { transform: translate(0); }
+        20% { transform: translate(-2px, 2px); }
+        40% { transform: translate(-2px, -2px); }
+        60% { transform: translate(2px, 2px); }
+        80% { transform: translate(2px, -2px); }
+        100% { transform: translate(0); }
+      }
+      
+      /* Styles Neo-Memphis */
+      .neo-nav-link {
+        position: relative;
+      }
+      
+      .neo-nav-link::after {
+        content: '';
+        position: absolute;
+        bottom: -2px;
+        left: 50%;
+        width: 0;
+        height: 2px;
+        background-color: currentColor;
+        transition: all 0.3s ease;
+        transform: translateX(-50%);
+      }
+      
+      .neo-nav-link:hover::after {
+        width: 80%;
+      }
+      
+      .neo-border-sm {
+        position: relative;
+        transition: all 0.2s ease;
+      }
+      
+      .neo-border-sm:hover {
+        transform: translate(-1px, -1px);
+        box-shadow: 3px 3px 0 rgba(10, 11, 12, 0.2);
+      }
+      
+      /* Animation des formes */
+      @keyframes float {
+        0%, 100% { transform: translateY(0); }
+        50% { transform: translateY(-10px); }
+      }
+    </style>
+    <script type="module">
+      function updateAuthLinks() {
+        const jwt = window.localStorage.getItem('jwt');
+        document.getElementById('auth-not-logged').style.display = jwt ? 'none' : 'inline-block';
+        document.getElementById('auth-logged').style.display = jwt ? 'inline-block' : 'none';
+      }
+      updateAuthLinks();
+      window.addEventListener('storage', updateAuthLinks);
+      // Déconnexion
+      const logoutBtn = document.getElementById('logout-btn');
+      if (logoutBtn) {
+        logoutBtn.addEventListener('click', () => {
+          window.localStorage.removeItem('jwt');
+          updateAuthLinks();
+          window.location.href = '/';
+        });
+      }
+    </script>
+  </body>
+</html>
+
+
+================================================
+File: src/pages/404.astro
+================================================
+---
+import BaseLayout from '../layouts/BaseLayout.astro';
+import '../styles/global.css';
+
+const { pathname } = Astro.url;
+
+// Gestion de la soumission du formulaire
+let formSuccess = false;
+let formError = null;
+
+if (Astro.request.method === 'POST') {
+  try {
+    const formData = await Astro.request.formData();
+    // Ici, vous pouvez traiter la suggestion ou le rapport d'erreur
+    // Par exemple, envoyer un email ou enregistrer dans une base de données
+    formSuccess = true;
+  } catch (error) {
+    formError = 'Erreur lors de l\'envoi du formulaire.';
+  }
+}
+---
+
+<BaseLayout title="Page non trouvée (404)" description="Erreur 404 - Page non trouvée">
+  <div class="text-center py-20 relative">
+    <h1 class="text-6xl md:text-8xl font-bold text-rust mb-4 tracking-retro">404</h1>
+    <h2 class="text-2xl md:text-3xl font-bold mb-6">Oups ! Cette page n'existe pas...</h2>
+    <p class="mb-8 opacity-80">La ressource demandée n'a pas été trouvée.<br/>Vérifiez l'URL ou retournez à l'accueil.</p>
+    <a href="/" class="inline-block px-8 py-3 bg-petrol text-cream font-bold uppercase tracking-wider rounded neo-btn-primary hover:bg-neo-mint transition-colors mb-8">Retour à l'accueil</a>
+
+    <div class="my-10">
+      <h3 class="text-lg font-bold mb-2">Signaler un problème ou suggérer une page</h3>
+      {formSuccess && (
+        <div class="bg-neo-mint/10 border border-l-4 border-neo-mint p-4 mb-4 neo-alert-success">
+          <p class="font-bold text-neo-mint">Merci pour votre retour !</p>
+        </div>
+      )}
+      {formError && (
+        <div class="bg-rust/10 border border-l-4 border-rust p-4 mb-4 neo-alert-error">
+          <p class="font-bold text-rust">{formError}</p>
+        </div>
+      )}
+      <form method="POST" class="max-w-md mx-auto bg-cream border border-night/10 p-6 rounded neo-form">
+        <div class="form-field mb-4">
+          <label for="message" class="block text-sm uppercase tracking-retro mb-1 font-bold">Votre message</label>
+          <textarea id="message" name="message" required rows="3" class="w-full py-2 px-3 bg-cream border border-night/30 text-sm font-mono focus:border-petrol focus:ring-1 focus:ring-petrol/30 neo-input" placeholder="Décrivez le problème ou suggérez une page..."></textarea>
+        </div>
+        <button type="submit" class="px-6 py-2 bg-rust text-cream font-bold uppercase tracking-wider neo-btn-primary hover:bg-petrol transition-colors">Envoyer</button>
+      </form>
+    </div>
+
+    <!-- Décorations Neo-Memphis -->
+    <div class="absolute top-0 left-0 w-24 h-24 bg-neo-yellow/20 clip-triangle -rotate-12"></div>
+    <div class="absolute bottom-0 right-0 w-24 h-24 bg-neo-blue/20 clip-circle"></div>
+  </div>
+</BaseLayout>
+
+<style>
+.clip-triangle {
+  clip-path: polygon(50% 0%, 0% 100%, 100% 100%);
+}
+.clip-circle {
+  clip-path: circle(50% at 50% 50%);
+}
+.neo-btn-primary {
+  transition: all 0.3s ease;
+}
+.neo-btn-primary:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 0 rgba(10, 11, 12, 0.1);
+}
+.neo-form:focus-within {
+  animation: pulse-border 1.5s infinite alternate;
+}
+@keyframes pulse-border {
+  0% { box-shadow: 0 0 0 0 rgba(13, 75, 89, 0); }
+  100% { box-shadow: 0 0 0 4px rgba(13, 75, 89, 0.05); }
+}
+</style>
+
+
+
+================================================
+File: src/pages/index.astro
+================================================
+---
+import BaseLayout from '../layouts/BaseLayout.astro';
+import '../styles/global.css';
+
+// SVG géométriques pour décoration Neo-Memphis
+const triangleSVG = `<svg width="80" height="80" viewBox="0 0 80 80" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <path d="M40 0L80 80H0L40 0Z" fill="currentColor" fill-opacity="0.7"/>
+</svg>`;
+
+const circleSVG = `<svg width="60" height="60" viewBox="0 0 60 60" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <circle cx="30" cy="30" r="30" fill="currentColor" fill-opacity="0.6"/>
+</svg>`;
+
+const zigzagSVG = `<svg width="120" height="30" viewBox="0 0 120 30" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <path d="M0 15L20 0L40 15L60 0L80 15L100 0L120 15" stroke="currentColor" stroke-width="2" stroke-opacity="0.7"/>
+</svg>`;
+
+const squigglySVG = `<svg width="100" height="20" viewBox="0 0 100 20" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <path d="M0 10C5 5 10 15 15 10C20 5 25 15 30 10C35 5 40 15 45 10C50 5 55 15 60 10C65 5 70 15 75 10C80 5 85 15 90 10C95 5 100 15 100 10" stroke="currentColor" stroke-width="2" stroke-linecap="round" fill="none"/>
+</svg>`;
+
+const crossSVG = `<svg width="40" height="40" viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <path d="M5 5L35 35M5 35L35 5" stroke="currentColor" stroke-width="3" stroke-linecap="round"/>
+</svg>`;
+
+const dotGridSVG = `<svg width="70" height="70" viewBox="0 0 70 70" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <circle cx="10" cy="10" r="3" fill="currentColor"/>
+  <circle cx="35" cy="10" r="3" fill="currentColor"/>
+  <circle cx="60" cy="10" r="3" fill="currentColor"/>
+  <circle cx="10" cy="35" r="3" fill="currentColor"/>
+  <circle cx="35" cy="35" r="3" fill="currentColor"/>
+  <circle cx="60" cy="35" r="3" fill="currentColor"/>
+  <circle cx="10" cy="60" r="3" fill="currentColor"/>
+  <circle cx="35" cy="60" r="3" fill="currentColor"/>
+  <circle cx="60" cy="60" r="3" fill="currentColor"/>
+</svg>`;
+
+const description = "Système d'inventaire rétro inspiré des années 80 pour gérer vos placards, frigo et légumes";
+const token = Astro.cookies.get('token');
+---
+
+<BaseLayout title="Économat - Années 80" description="Système d'inventaire rétro inspiré des années 80 pour gérer vos placards, frigo et légumes">
+	<!-- Bannière Neo-Memphis en haut de page -->
+	<div class="relative w-full h-2 bg-gradient-to-r from-neo-pink via-neo-yellow to-neo-blue mb-10"></div>
+	
+	<!-- Titre principal et introduction avec décorations Neo-Memphis -->
+	<section class="mb-16 md:mb-20 text-center relative overflow-hidden">
+		<!-- Éléments décoratifs Neo-Memphis avec couleurs fixes au lieu de classes dynamiques -->
+		<div class="absolute top-[-20px] right-[10%] text-neo-pink transform rotate-12 opacity-70 z-0 hidden md:block animate-float">
+			<Fragment set:html={triangleSVG} />
+		</div>
+		<div class="absolute bottom-[10%] left-[-10px] text-neo-yellow transform -rotate-12 opacity-60 z-0 hidden md:block animate-float-reverse">
+			<Fragment set:html={circleSVG} />
+		</div>
+		<!-- Nouvel élément décoratif: croix -->
+		<div class="absolute top-[40%] left-[5%] opacity-20 z-0 hidden lg:block" style="color: #a5c8e4; animation: pulse 7s ease-in-out infinite;">
+			<Fragment set:html={crossSVG} />
+		</div>
+		<!-- Nouvel élément décoratif: grille de points -->
+		<div class="absolute bottom-[5%] right-[8%] opacity-30 z-0 hidden lg:block" style="color: #dcc7ff;">
+			<Fragment set:html={dotGridSVG} />
+		</div>
+		
+		<h2 class="text-2xl md:text-4xl font-bold mb-6 md:mb-8 tracking-retro uppercase relative z-10">
+			<span class="relative">
+				<!-- Soulignement Neo-Memphis -->
+				<span class="absolute -bottom-2 left-0 w-full h-1 bg-neo-mint/50"></span>
+				Bienvenue dans mon économat
+			</span>
+		</h2>
+		
+		<!-- Terminal inspiré années 80 avec fond à motifs grid -->
+		<div class="font-mono bg-night text-cream p-4 md:p-6 rounded-sm mb-8 md:mb-10 mx-auto max-w-2xl overflow-hidden relative paper-cut neo-terminal-shadow">
+			<!-- Grid pattern overlay -->
+			<div class="absolute inset-0 bg-grid-lines opacity-10 bg-[length:20px_20px] pointer-events-none" style="background-position: 1px 1px;"></div>
+			
+			<!-- Coin décoratif Neo-Memphis -->
+			<div class="absolute top-0 right-0 w-16 h-16 overflow-hidden">
+				<div class="absolute top-0 right-0 w-full h-full bg-neo-blue/10 transform rotate-45 translate-x-1/2 -translate-y-1/2"></div>
+			</div>
+			
+			<div class="flex items-center justify-between mb-3 pb-2 border-b border-cream/20 relative z-10">
+				<span class="text-xs opacity-70">TERMINAL V1.0</span>
+				<span class="text-xs opacity-70">[ÉCONOMAT-OS]</span>
+			</div>
+			<div class="typewriter-text relative z-10">
+				<p class="text-sm md:text-base leading-relaxed">
+						<span style="color: #bce4d0;">$</span> <span class="font-bold">SYSTÈME:</span> Bienvenue dans l'interface de l'économat.<br/>
+						<span style="color: #ffb0bd;">$</span> <span class="font-bold">STATUS:</span> Tous les systèmes opérationnels.<br/>
+						<span style="color: #ffd166;">$</span> <span class="font-bold">INFO:</span> Explorez notre collection d'articles soigneusement sélectionnés.<br/>
+						<span style="color: #a5c8e4;">$</span> <span class="font-bold">ATTENTE:</span> Commande utilisateur..._
+				</p>
+			</div>
+		</div>
+		
+		<!-- Bouton CTA avec style Neo-Memphis -->
+		<div class="flex justify-center relative z-10">
+			<a href="/items" class="inline-flex items-center justify-center px-8 py-3 bg-rust text-cream font-bold text-lg uppercase tracking-wider transition-all duration-300 ease-in-out relative overflow-hidden neo-border-sm hover:-translate-y-0.5 neo-cta">
+				<!-- Déco du bouton -->
+				<div class="absolute left-0 top-0 h-full w-1 bg-neo-pink/70"></div>
+				<span class="relative z-10 flex items-center">
+					<span class="mr-2">Voir les articles</span>
+					<span class="text-lg">→</span>
+				</span>
+			</a>
+		</div>
+		
+		<!-- Zigzag Neo-Memphis au bas de la section -->
+		<div class="mt-16 text-petrol/30 flex justify-center">
+			<Fragment set:html={zigzagSVG} />
+		</div>
+	</section>
+
+	<!-- Nouvelle section: Stats avec décoration Neo-Memphis -->
+	<section class="mb-20 relative overflow-hidden">
+		<!-- Décoration d'arrière-plan Neo-Memphis -->
+		<div class="absolute top-0 left-0 w-full h-full opacity-5">
+			<div class="absolute top-0 left-0 h-full w-full bg-confetti"></div>
+		</div>
+		
+		<!-- Élément décoratif: ligne squiggly -->
+		<div class="absolute top-0 left-[20%] text-neo-pink/40 transform -translate-x-1/2 hidden md:block">
+			<Fragment set:html={squigglySVG} />
+		</div>
+		
+		<div class="p-8 md:p-12 relative z-10">
+			<h3 class="text-xl md:text-2xl font-bold mb-10 tracking-retro text-center relative inline-block">
+				<span class="absolute -left-6 top-1/2 transform -translate-y-1/2 w-4 h-4 bg-neo-yellow"></span>
+				STATISTIQUES DE L'ÉCONOMAT
+				<span class="absolute -right-6 top-1/2 transform -translate-y-1/2 w-4 h-4 bg-neo-blue"></span>
+			</h3>
+			
+			<div class="grid grid-cols-1 md:grid-cols-3 gap-8 text-center">
+				<!-- Stat card 1 -->
+				<div class="p-6 border border-night/10 relative overflow-hidden neo-stat-card">
+					<!-- Élément décoratif -->
+					<div class="absolute top-0 left-0 w-8 h-8 bg-neo-pink/20"></div>
+					
+					<span class="block text-3xl font-mono font-bold mb-2 text-petrol">42</span>
+					<span class="block text-sm uppercase tracking-wider opacity-70">Articles en stock</span>
+				</div>
+				
+				<!-- Stat card 2 -->
+				<div class="p-6 border border-night/10 relative overflow-hidden neo-stat-card">
+					<!-- Élément décoratif -->
+					<div class="absolute top-0 right-0 w-8 h-8 bg-neo-yellow/20"></div>
+					
+					<span class="block text-3xl font-mono font-bold mb-2 text-rust">8</span>
+					<span class="block text-sm uppercase tracking-wider opacity-70">Catégories</span>
+				</div>
+				
+				<!-- Stat card 3 -->
+				<div class="p-6 border border-night/10 relative overflow-hidden neo-stat-card">
+					<!-- Élément décoratif -->
+					<div class="absolute bottom-0 right-0 w-8 h-8 bg-neo-blue/20"></div>
+					
+					<span class="block text-3xl font-mono font-bold mb-2 text-pastel-blue">12</span>
+					<span class="block text-sm uppercase tracking-wider opacity-70">Emplacements</span>
+				</div>
+			</div>
+		</div>
+	</section>
+
+	<!-- Grille classique avec style Neo-Memphis -->
+	<section class="mb-16 md:mb-24 relative">
+		<!-- Élément décoratif -->
+		<div class="absolute top-[50%] right-[-30px] translate-y-[-50%] opacity-50 hidden lg:block" style="color: #dcc7ff;">
+			<div class="w-16 h-32 bg-current clip-rhombus transform rotate-12"></div>
+		</div>
+		<!-- Nouvel élément décoratif: cercle couleur néon -->
+		<div class="absolute top-[-20px] left-[20%] w-12 h-12 rounded-full opacity-30 hidden md:block" style="background: linear-gradient(45deg, #ffb0bd, #ffd166); filter: blur(8px);"></div>
+		
+		<h3 class="text-xl md:text-2xl font-bold mb-8 tracking-retro relative">
+			<div class="inline-block relative">
+				<span class="relative z-10">ACCÈS RAPIDE</span>
+				<!-- Surlignement style marqueur -->
+				<span class="absolute bottom-0 left-0 w-full h-3 bg-neo-mint/30 -z-10"></span>
+			</div>
+		</h3>
+		
+		<div class="grid grid-cols-1 md:grid-cols-2 gap-6 md:gap-8">
+			<!-- Carte Catalogue avec style Neo-Memphis -->
+			<div class="border border-night/20 p-6 md:p-8 hover:border-petrol transition-all duration-300 relative overflow-hidden paper-cut-soft bg-cream neo-card">
+				<!-- Élément décoratif Neo-Memphis -->
+				<div class="absolute top-0 right-0 w-16 h-16 clip-triangle transform rotate-180" style="background-color: rgba(188, 228, 208, 0.2);">
+				</div>
+				
+				<!-- Ligne décorative Neo-Memphis en haut -->
+				<div class="absolute top-0 left-0 h-1 w-1/3 bg-neo-mint/50"></div>
+				
+				<h3 class="text-xl font-bold mb-4 tracking-retro">Catalogue</h3>
+				<p class="opacity-80 mb-4 text-sm md:text-base">Découvrez notre sélection d'articles vintages et fonctionnels.</p>
+				<a href="/items" class="inline-flex items-center text-petrol hover-underline neo-link">
+					<span>Explorer</span>
+					<span class="ml-1">→</span>
+				</a>
+			</div>
+			
+			<!-- Carte Inventaire avec style Neo-Memphis -->
+			<div class="border border-night/20 p-6 md:p-8 hover:border-rust transition-all duration-300 relative overflow-hidden paper-cut-soft bg-cream neo-card">
+				<!-- Élément décoratif Neo-Memphis -->
+				<div class="absolute top-0 left-0 w-10 h-10 clip-circle" style="background-color: rgba(255, 202, 176, 0.3);">
+				</div>
+				
+				<!-- Ligne décorative Neo-Memphis à droite -->
+				<div class="absolute top-0 right-0 h-full w-1 bg-neo-peach/50"></div>
+				
+				<h3 class="text-xl font-bold mb-4 tracking-retro">Inventaire</h3>
+				<p class="opacity-80 mb-4 text-sm md:text-base">Parcourez l'état de notre stock en temps réel.</p>
+				<a href="/items" class="inline-flex items-center text-rust hover-underline neo-link">
+					<span>Consulter</span>
+					<span class="ml-1">→</span>
+				</a>
+			</div>
+		</div>
+	</section>
+	
+	<!-- Nouvelle section: Banner CTA finale avec décorations Neo-Memphis -->
+	<section class="mb-12 md:mb-16 relative overflow-hidden">
+		<!-- Décoration d'arrière-plan -->
+		<div class="absolute inset-0 bg-grid-dots opacity-10" style="background-size: 15px 15px; background-color: rgba(220, 199, 255, 0.1);"></div>
+		
+		<!-- Éléments décoratifs -->
+		<div class="absolute top-[-10px] left-[10%] w-6 h-6 bg-neo-yellow/60 transform rotate-45"></div>
+		<div class="absolute bottom-[-10px] right-[10%] w-6 h-6 bg-neo-pink/60 rounded-full"></div>
+		
+		<div class="p-8 md:p-10 text-center relative z-10">
+			<p class="text-lg md:text-xl mb-6 max-w-2xl mx-auto">
+				<span class="relative inline-block">
+					<span class="absolute bottom-0 left-0 w-full h-2 bg-neo-blue/20 -z-10"></span>
+					Gardez le contrôle de votre économat
+				</span> 
+				avec notre système de gestion d'inventaire rétro et efficace.
+			</p>
+			
+			<div class="flex flex-wrap justify-center gap-4 mt-6">
+				<a href="/items/new" class="px-6 py-3 bg-night text-cream font-bold tracking-wider uppercase text-sm neo-border-sm hover:-translate-y-0.5 transition-transform">
+					+ Ajouter un article
+				</a>
+				<a href="/categories" class="px-6 py-3 border border-night/30 font-bold tracking-wider uppercase text-sm hover:bg-night/5 transition-colors">
+					Voir les catégories
+				</a>
+				<a href="/auth/login" class="px-6 py-3 bg-petrol text-cream font-bold tracking-wider uppercase text-sm neo-border-sm hover:bg-neo-mint transition-colors">
+					Se connecter
+				</a>
+				<a href="/auth/register" class="px-6 py-3 bg-neo-mint text-night font-bold tracking-wider uppercase text-sm neo-border-sm hover:bg-petrol hover:text-cream transition-colors">
+					S'inscrire
+				</a>
+			</div>
+		</div>
+	</section>
+</BaseLayout>
+
+<BaseLayout title="Accueil" description={description}>
+  <div class="max-w-xl mx-auto py-16 text-center">
+    <h1 class="text-3xl font-bold mb-6">Bienvenue sur Économat</h1>
+    <p class="mb-6">Système d'inventaire rétro inspiré des années 80.</p>
+    {token ? (
+      <a href="/dashboard" class="px-6 py-2 bg-petrol text-cream font-bold uppercase tracking-wider neo-btn-primary hover:bg-neo-mint transition-colors">Accéder au dashboard</a>
+    ) : (
+      <a href="/login" class="px-6 py-2 bg-petrol text-cream font-bold uppercase tracking-wider neo-btn-primary hover:bg-neo-mint transition-colors">Se connecter</a>
+    )}
+  </div>
+</BaseLayout>
+
+<style>
+	/* Animations pour les formes Neo-Memphis */
+	@keyframes float {
+		0%, 100% { transform: translateY(0) rotate(12deg); }
+		50% { transform: translateY(-10px) rotate(10deg); }
+	}
+	
+	@keyframes float-reverse {
+		0%, 100% { transform: translateY(0) rotate(-12deg); }
+		50% { transform: translateY(-8px) rotate(-15deg); }
+	}
+	
+	@keyframes pulse {
+		0%, 100% { opacity: 0.2; transform: scale(1); }
+		50% { opacity: 0.3; transform: scale(1.05); }
+	}
+
+	/* Classes d'animation pour éviter les styles inline */
+	.animate-float {
+		animation: float 8s ease-in-out infinite;
+	}
+	
+	.animate-float-reverse {
+		animation: float-reverse 10s ease-in-out infinite;
+	}
+	
+	/* Styles Neo-Memphis supplémentaires */
+	.neo-terminal-shadow {
+		box-shadow: 5px 5px 0 rgba(10, 11, 12, 0.1);
+	}
+	
+	.neo-stat-card {
+		transition: all 0.3s ease;
+	}
+	
+	.neo-stat-card:hover {
+		transform: translateY(-3px);
+		box-shadow: 0 3px 10px rgba(10, 11, 12, 0.05);
+	}
+	
+	.neo-card {
+		transition: all 0.3s ease;
+	}
+	
+	.neo-card:hover {
+		transform: translateY(-3px) translateX(2px);
+	}
+	
+	.neo-cta::before {
+		content: '';
+		position: absolute;
+		top: 0;
+		right: 0;
+		width: 10px;
+		height: 10px;
+		background-color: rgba(255, 176, 189, 0.7);
+		z-index: 1;
+	}
+	
+	.neo-link {
+		position: relative;
+		transition: all 0.2s ease;
+	}
+	
+	.neo-link::before {
+		content: '';
+		position: absolute;
+		bottom: -2px;
+		left: 0;
+		width: 100%;
+		height: 1px;
+		background-color: currentColor;
+		transform: scaleX(0);
+		transform-origin: right;
+		transition: transform 0.3s ease;
+	}
+	
+	.neo-link:hover::before {
+		transform: scaleX(1);
+		transform-origin: left;
+	}
+</style>
+
+
+
+================================================
+File: src/pages/auth/login.astro
+================================================
+---
+import BaseLayout from '../../layouts/BaseLayout.astro';
+import '../../styles/global.css';
+
+let error = '';
+if (Astro.request.method === 'POST') {
+  const formData = await Astro.request.formData();
+  const identifier = formData.get('identifier');
+  const password = formData.get('password');
+  try {
+    const res = await fetch('http://localhost:1337/api/auth/local', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ identifier, password })
+    });
+    const data = await res.json();
+    if (data.jwt) {
+      Astro.cookies.set('token', data.jwt, { path: '/', httpOnly: false, sameSite: 'strict' });
+      return Astro.redirect('/dashboard');
+    } else {
+      error = data.error?.message || 'Identifiants invalides';
+    }
+  } catch {
+    error = 'Erreur de connexion au serveur';
+  }
+}
+---
+
+<BaseLayout title="Connexion" description="Connexion utilisateur">
+  <div class="max-w-lg mx-auto py-12">
+    <h1 class="text-3xl font-bold mb-6 text-center">Connexion</h1>
+    {error && (
+      <div class="bg-rust/10 border border-l-4 border-rust p-4 mb-6 neo-alert-error">
+        <p class="font-bold text-rust">{error}</p>
+      </div>
+    )}
+    <form method="POST" class="bg-cream border border-night/10 p-6 rounded neo-form">
+      <div class="form-field mb-4">
+        <label for="identifier" class="block text-sm font-bold mb-1">Nom d'utilisateur ou Email</label>
+        <input type="text" id="identifier" name="identifier" required class="w-full py-2 px-3 bg-cream border border-night/30 neo-input" />
+      </div>
+      <div class="form-field mb-6">
+        <label for="password" class="block text-sm font-bold mb-1">Mot de passe</label>
+        <input type="password" id="password" name="password" required class="w-full py-2 px-3 bg-cream border border-night/30 neo-input" />
+      </div>
+      <button type="submit" class="w-full px-6 py-2 bg-petrol text-cream font-bold uppercase tracking-wider neo-btn-primary hover:bg-neo-mint transition-colors">Se connecter</button>
+    </form>
+    <div class="mt-6 text-center">
+      <a href="/auth/register" class="text-petrol hover:underline">Pas encore de compte ? S'inscrire</a>
+    </div>
+  </div>
+</BaseLayout>
+
+<style>
+.neo-input {
+  transition: all 0.2s ease;
+  border-radius: 0;
+}
+.neo-input:focus {
+  outline: none;
+  box-shadow: 3px 3px 0 rgba(13, 75, 89, 0.1);
+  transform: translate(-1px, -1px);
+}
+.neo-btn-primary {
+  transition: all 0.3s ease;
+}
+.neo-btn-primary:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 0 rgba(10, 11, 12, 0.1);
+}
+.neo-form:focus-within {
+  animation: pulse-border 1.5s infinite alternate;
+}
+@keyframes pulse-border {
+  0% { box-shadow: 0 0 0 0 rgba(13, 75, 89, 0); }
+  100% { box-shadow: 0 0 0 4px rgba(13, 75, 89, 0.05); }
+}
+</style>
+
+
+
+================================================
+File: src/pages/auth/register.astro
+================================================
+---
+import BaseLayout from '../../layouts/BaseLayout.astro';
+import '../../styles/global.css';
+---
+
+<BaseLayout title="Inscription" description="Créer un compte utilisateur">
+  <div class="max-w-lg mx-auto py-12">
+    <h1 class="text-3xl font-bold mb-6 text-center">Créer un compte</h1>
+    <div id="register-success" class="hidden bg-neo-mint/10 border border-l-4 border-neo-mint p-4 mb-6 neo-alert-success">
+      <p class="font-bold text-neo-mint">Inscription réussie ! Vous pouvez maintenant vous connecter.</p>
+    </div>
+    <div id="register-error" class="hidden bg-rust/10 border border-l-4 border-rust p-4 mb-6 neo-alert-error">
+      <p class="font-bold text-rust" id="register-error-msg"></p>
+    </div>
+    <form id="register-form" class="bg-cream border border-night/10 p-6 rounded neo-form">
+      <div class="form-field mb-4">
+        <label for="username" class="block text-sm font-bold mb-1">Nom d'utilisateur</label>
+        <input type="text" id="username" name="username" required class="w-full py-2 px-3 bg-cream border border-night/30 neo-input" />
+      </div>
+      <div class="form-field mb-4">
+        <label for="email" class="block text-sm font-bold mb-1">Email</label>
+        <input type="email" id="email" name="email" required class="w-full py-2 px-3 bg-cream border border-night/30 neo-input" />
+      </div>
+      <div class="form-field mb-6">
+        <label for="password" class="block text-sm font-bold mb-1">Mot de passe</label>
+        <input type="password" id="password" name="password" required class="w-full py-2 px-3 bg-cream border border-night/30 neo-input" />
+      </div>
+      <button type="submit" class="w-full px-6 py-2 bg-petrol text-cream font-bold uppercase tracking-wider neo-btn-primary hover:bg-neo-mint transition-colors">S'inscrire</button>
+    </form>
+    <div class="mt-6 text-center">
+      <a href="/auth/login" class="text-petrol hover:underline">Déjà un compte ? Se connecter</a>
+    </div>
+  </div>
+  <script type="module">
+    const form = document.getElementById('register-form');
+    const successDiv = document.getElementById('register-success');
+    const errorDiv = document.getElementById('register-error');
+    const errorMsg = document.getElementById('register-error-msg');
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      successDiv.classList.add('hidden');
+      errorDiv.classList.add('hidden');
+      errorMsg.textContent = '';
+      const username = form.username.value;
+      const email = form.email.value;
+      const password = form.password.value;
+      try {
+        const response = await fetch('http://localhost:1337/api/auth/local/register', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ username, email, password })
+        });
+        if (!response.ok) {
+          const errorData = await response.json();
+          throw new Error(errorData.error?.message || 'Erreur lors de l\'inscription.');
+        }
+        form.reset();
+        successDiv.classList.remove('hidden');
+      } catch (err) {
+        errorMsg.textContent = err.message || 'Erreur lors de l\'inscription.';
+        errorDiv.classList.remove('hidden');
+      }
+    });
+  </script>
+</BaseLayout>
+
+<style>
+.neo-input {
+  transition: all 0.2s ease;
+  border-radius: 0;
+}
+.neo-input:focus {
+  outline: none;
+  box-shadow: 3px 3px 0 rgba(13, 75, 89, 0.1);
+  transform: translate(-1px, -1px);
+}
+.neo-btn-primary {
+  transition: all 0.3s ease;
+}
+.neo-btn-primary:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 0 rgba(10, 11, 12, 0.1);
+}
+.neo-form:focus-within {
+  animation: pulse-border 1.5s infinite alternate;
+}
+@keyframes pulse-border {
+  0% { box-shadow: 0 0 0 0 rgba(13, 75, 89, 0); }
+  100% { box-shadow: 0 0 0 4px rgba(13, 75, 89, 0.05); }
+}
+</style>
+
+
+
+================================================
+File: src/pages/categories/example.astro
+================================================
+---
+import BaseLayout from '../../layouts/BaseLayout.astro';
+import '../../styles/global.css';
+
+// Page d'exemple pour les catégories (utilisateur non connecté)
+---
+
+<BaseLayout title="Aperçu des catégories" description="Exemple d'accès restreint">
+  <div class="max-w-xl mx-auto py-16 text-center">
+    <h1 class="text-3xl font-bold mb-6">Accès restreint</h1>
+    <p class="mb-6">Vous devez être connecté pour consulter la liste complète des catégories.</p>
+    <div class="mb-8">
+      <h2 class="text-xl font-bold mb-2">Exemple de catégorie</h2>
+      <div class="bg-cream border border-night/10 p-6 rounded shadow-sm inline-block">
+        <h3 class="text-lg font-bold mb-2">Produits laitiers</h3>
+        <p class="text-xs text-night/60">Exemple : Lait, Fromage, Yaourt</p>
+      </div>
+    </div>
+    <a href="/auth/login" class="px-6 py-2 bg-petrol text-cream font-bold uppercase tracking-wider neo-btn-primary hover:bg-neo-mint transition-colors">Se connecter</a>
+  </div>
+</BaseLayout>
+
+
+
+================================================
+File: src/pages/categories/index.astro
+================================================
+---
+import BaseLayout from '../../layouts/BaseLayout.astro';
+import '../../styles/global.css';
+
+interface Category {
+  id: number;
+  name?: string;
+  icon?: string;
+  [key: string]: any;
+}
+
+let categories: Category[] = [];
+let error = null;
+let data: any = null;
+
+try {
+  const res = await fetch('http://localhost:1337/api/categories?populate=icon');
+  if (!res.ok) {
+    throw new Error('Erreur lors de la récupération des catégories');
+  }
+  data = await res.json();
+  categories = data.data || [];
+} catch (e) {
+  error = e instanceof Error ? e.message : 'Une erreur inconnue est survenue';
+}
+
+const neoColors = ['neo-pink', 'neo-yellow', 'neo-blue', 'neo-mint', 'neo-peach', 'neo-lavender'];
+---
+
+<script type="module">
+  function checkAuthAndRedirect() {
+    const jwt = window.localStorage.getItem('jwt');
+    if (!jwt) {
+      window.location.href = '/auth/login';
+    }
+  }
+  checkAuthAndRedirect();
+</script>
+
+<BaseLayout title="Catégories - Économat" description="Liste des catégories de produits">
+  <div class="mb-8 md:mb-12">
+    <h2 class="text-2xl md:text-3xl font-bold mb-4 tracking-retro uppercase relative inline-block">
+      <span class="text-petrol">[</span> CATÉGORIES <span class="text-rust">]</span>
+      <div class="absolute -right-8 -top-8 w-16 h-16 opacity-20 bg-neo-mint clip-circle hidden md:block"></div>
+    </h2>
+    <p class="opacity-80 max-w-2xl">
+      Retrouvez ici toutes les catégories pour organiser vos articles.
+    </p>
+  </div>
+
+  <div class="mb-8 flex flex-wrap gap-4">
+    <a href="/categories/new" class="px-6 py-2 bg-petrol text-cream font-bold uppercase tracking-retro hover:bg-neo-mint transition-colors duration-300 neo-btn-primary">
+      + Nouvelle catégorie
+    </a>
+  </div>
+
+  {error && (
+    <div class="bg-rust/10 border border-l-4 border-rust p-4 mb-8 neo-alert-error">
+      {error}
+    </div>
+  )}
+
+
+
+  <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+    {categories.length === 0 && !error && (
+      <div class="col-span-full text-center text-night/60 italic">Aucune catégorie trouvée.</div>
+    )}
+    {categories.map((cat, idx) => {
+      const color = neoColors[idx % neoColors.length];
+      let iconUrl = null;
+	 
+      if (cat.icon) {
+        if (Array.isArray(cat.icon) && cat.icon.length > 0 && (cat.icon[0] as any)?.url) {
+          iconUrl = (cat.icon[0] as any).url;
+        } else if (typeof cat.icon === 'object' && (cat.icon as any)?.url) {
+          iconUrl = (cat.icon as any).url;
+        }
+      }
+      // Corrige l'URL si elle commence par /uploads
+      if (iconUrl && iconUrl.startsWith('/uploads')) {
+        iconUrl = `http://localhost:1337${iconUrl}`;
+      }
+      const name = cat.name;
+      let displayName;
+      if (name === undefined || name === null) {
+        displayName = <span class="italic text-night/40">(sans nom)</span>;
+      } else {
+        displayName = name;
+      }
+      return (
+        <div class={`bg-cream border border-night/10 p-6 paper-cut relative overflow-hidden flex flex-col gap-2`}>
+          <div class={`absolute top-0 left-0 w-full h-2 bg-${color}/30`}></div>
+          <div class="absolute bottom-0 right-0 w-16 h-16 opacity-10 clip-circle bg-night"></div>
+          <div class="flex items-center gap-3 mb-2">
+            <div class="icon-preview text-2xl" style="width:40px;height:40px;">
+              {iconUrl
+                ? <img src={iconUrl} alt="icône" class="w-8 h-8 object-contain" />
+                : '📦'}
+            </div>
+            <h3 class="text-lg font-bold tracking-retro mb-0">
+              {displayName}
+            </h3>
+          </div>
+          <div class="flex gap-2 mt-2">
+            <a href={`/categories/${cat.id}/edit`} class={`px-4 py-1 bg-${color}/20 text-sm font-mono font-bold uppercase tracking-retro hover:bg-${color}/40 transition-colors neo-btn-secondary`}>
+              Modifier
+            </a>
+          </div>
+        </div>
+      );
+    })}
+  </div>
+</BaseLayout>
+
+<style>
+  .icon-preview {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 40px;
+    height: 40px;
+    background-color: rgba(13, 75, 89, 0.05);
+    border-radius: 50%;
+  }
+</style>
+
+
+
+================================================
+File: src/pages/categories/new.astro
+================================================
+---
+export const prerender = false;
+import BaseLayout from '../../layouts/BaseLayout.astro';
+import '../../styles/global.css';
+
+// États du formulaire
+let formSuccess = false;
+let formError = null;
+
+// Traitement de la soumission du formulaire
+if (Astro.request.method === 'POST') {
+  try {
+    // Vérifie le Content-Type avant d'appeler formData
+    const contentType = Astro.request.headers.get('content-type') || '';
+    if (!contentType.includes('application/x-www-form-urlencoded') && !contentType.includes('multipart/form-data')) {
+      throw new Error('Le Content-Type du formulaire n\'est pas supporté.');
+    }
+    const formData = await Astro.request.formData();
+    const urlData = new URLSearchParams();
+    urlData.append('data', JSON.stringify({
+      name: String(formData.get('name') ?? ''),
+      icon: String(formData.get('icon') ?? '')
+    }));
+    
+    // Envoi des données à l'API Strapi
+    const response = await fetch('http://localhost:1337/api/categories', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/x-www-form-urlencoded',
+      },
+      body: urlData.toString()
+    });
+    
+    if (!response.ok) {
+      const errorData = await response.json();
+      throw new Error(errorData.error?.message || "Une erreur est survenue lors de la création de la catégorie.");
+    }
+    
+    formSuccess = true;
+    
+    // Redirection vers la liste des catégories après un court délai
+    setTimeout(() => {
+      return Astro.redirect('/categories');
+    }, 1500);
+    
+  } catch (error) {
+    console.error('Erreur lors de la soumission du formulaire:', error);
+    formError = (error instanceof Error ? error.message : String(error)) || "Une erreur est survenue lors de la création de la catégorie.";
+  }
+}
+
+// Couleur aléatoire Neo-Memphis pour les éléments décoratifs
+const neoColors = ['neo-pink', 'neo-yellow', 'neo-blue', 'neo-mint', 'neo-peach', 'neo-lavender'];
+const accentColor = neoColors[Math.floor(Math.random() * neoColors.length)];
+---
+
+<BaseLayout title="Nouvelle Catégorie - Économat" description="Créez une nouvelle catégorie pour organiser vos articles">
+  <div class="mb-8 md:mb-12">
+    <h2 class="text-2xl md:text-3xl font-bold mb-4 tracking-retro uppercase relative inline-block">
+      <span class="text-petrol">[</span> NOUVELLE CATÉGORIE <span class="text-rust">]</span>
+      
+      <!-- Élément décoratif Neo-Memphis -->
+      <div class={`absolute -right-8 -top-8 w-16 h-16 opacity-20 bg-${accentColor} clip-circle hidden md:block`}></div>
+    </h2>
+    
+    <p class="opacity-80 max-w-2xl">
+      Créez une nouvelle catégorie pour organiser vos articles. Les champs marqués d'un astérisque (*) sont obligatoires.
+    </p>
+  </div>
+  
+  <!-- Affichage des messages de succès ou d'erreur -->
+  {formSuccess && (
+    <div class="bg-neo-mint/10 border border-l-4 border-neo-mint p-4 mb-8 neo-alert-success">
+      <h3 class="font-bold text-neo-mint mb-2">Catégorie créée avec succès!</h3>
+      <p class="text-sm">Vous allez être redirigé vers la liste des catégories...</p>
+    </div>
+  )}
+  
+  {formError && (
+    <div class="bg-rust/10 border border-l-4 border-rust p-4 mb-8 neo-alert-error">
+      <h3 class="font-bold text-rust mb-2">Erreur</h3>
+      <p class="text-sm">{formError}</p>
+    </div>
+  )}
+  
+  <div class="bg-cream border border-night/10 p-6 md:p-8 paper-cut relative overflow-hidden">
+    <!-- Éléments décoratifs Neo-Memphis -->
+    <div class={`absolute top-0 left-0 w-full h-2 bg-${accentColor}/30`}></div>
+    <div class="absolute bottom-0 right-0 w-24 h-24 opacity-5 clip-triangle transform rotate-12 bg-night"></div>
+    <div class={`absolute top-1/2 right-0 w-3 h-12 bg-${accentColor}/40 transform -translate-y-1/2 hidden lg:block`}></div>
+    
+    <!-- Grille pointillée décorative en arrière-plan -->
+    <div class="absolute inset-0 bg-grid-dots opacity-5 pointer-events-none"></div>
+    
+    <form method="POST" class="relative z-10 neo-form">
+      <div class="grid grid-cols-1 gap-y-0">
+        <!-- Champ Nom -->
+        <div class="form-field">
+          <label for="category-name" class="block text-sm uppercase tracking-retro mb-1 font-bold">
+            Nom de la catégorie <span class="text-rust">*</span>
+          </label>
+          <div class="relative">
+            <input 
+              type="text" 
+              id="category-name" 
+              name="name" 
+              required
+              class="w-full py-2 px-3 bg-cream border border-night/30 text-sm font-mono focus:border-petrol focus:ring-1 focus:ring-petrol/30 neo-input"
+              placeholder="ex: Produits laitiers, Épices, Boissons..."
+            />
+          </div>
+        </div>
+        
+        <!-- Champ Icon (URL ou texte) -->
+        <div class="form-field">
+          <label for="category-icon" class="block text-sm uppercase tracking-retro mb-1 font-bold">
+            Icône
+          </label>
+          <div class="relative">
+            <input 
+              type="text" 
+              id="category-icon" 
+              name="icon"
+              class="w-full py-2 px-3 bg-cream border border-night/30 text-sm font-mono focus:border-petrol focus:ring-1 focus:ring-petrol/30 neo-input"
+              placeholder="URL d'une image ou nom de l'icône"
+            />
+          </div>
+          <p class="text-xs opacity-60 mt-1">
+            Vous pouvez utiliser une URL d'image ou un nom d'icône (ex: 🍎, 🥛, 🧂)
+          </p>
+        </div>
+      </div>
+      
+      <!-- Ligne séparatrice décorative Neo-Memphis -->
+      <div class="my-6 flex items-center">
+        <div class={`flex-grow h-px bg-${accentColor}/30`}></div>
+        <div class={`mx-4 w-3 h-3 bg-${accentColor}/60`}></div>
+        <div class="flex-grow h-px bg-night/10"></div>
+      </div>
+      
+      <!-- Boutons d'action -->
+      <div class="flex flex-col sm:flex-row justify-center sm:justify-between gap-4 items-center mt-6">
+        <a 
+          href="/categories" 
+          class="px-6 py-2 border border-night/30 font-bold tracking-wider uppercase text-sm hover:bg-night/5 transition-colors text-center sm:text-left neo-btn-secondary"
+        >
+          Annuler
+        </a>
+        
+        <button 
+          type="submit" 
+          class={`px-8 py-3 bg-petrol text-cream font-bold uppercase tracking-retro hover:bg-${accentColor} transition-colors duration-300 neo-btn-primary relative overflow-hidden`}
+        >
+          <!-- Élément décoratif Neo-Memphis -->
+          <div class="absolute top-0 left-0 w-2 h-full bg-white/10"></div>
+          <span class="relative z-10">💾 Enregistrer la catégorie</span>
+        </button>
+      </div>
+    </form>
+  </div>
+</BaseLayout>
+
+<script>
+  // Script pour la prévisualisation de la catégorie
+  document.addEventListener('DOMContentLoaded', () => {
+    const nameInput = document.getElementById('category-name');
+    const iconInput = document.getElementById('category-icon');
+    const previewName = document.getElementById('preview-name');
+    const previewIcon = document.getElementById('preview-icon');
+    if (nameInput && previewName) {
+      nameInput.addEventListener('input', (e) => {
+        const input = e.target;
+        if (input && previewName) {
+          previewName.textContent = (input instanceof HTMLInputElement ? input.value : '') || 'Nom de la catégorie';
+        }
+      });
+    }
+    if (iconInput && previewIcon) {
+      iconInput.addEventListener('input', (e) => {
+        const input = e.target;
+        if (input && previewIcon) {
+          const iconValue = (input instanceof HTMLInputElement ? input.value.trim() : '');
+          if (!iconValue) {
+            previewIcon.innerHTML = '📦'; // Icône par défaut
+            return;
+          }
+          if (iconValue.match(/https?:\/\/.*\.(png|jpg|jpeg|gif|svg)$/i)) {
+            previewIcon.innerHTML = `<img src="${iconValue}" alt="Icône de catégorie" class="w-8 h-8 object-contain" />`;
+          } else {
+            previewIcon.innerHTML = iconValue;
+          }
+        }
+      });
+    }
+  });
+</script>
+
+<style>
+  /* Styles Neo-Memphis pour le formulaire */
+  .neo-input {
+    transition: all 0.2s ease;
+    border-radius: 0;
+  }
+  
+  .neo-input:focus {
+    outline: none;
+    box-shadow: 3px 3px 0 rgba(13, 75, 89, 0.1);
+    transform: translate(-1px, -1px);
+  }
+  
+  .form-field {
+    margin-bottom: 1.5rem;
+  }
+  
+  /* Animation pour les alertes */
+  .neo-alert-success,
+  .neo-alert-error {
+    position: relative;
+    overflow: hidden;
+  }
+  
+  .neo-alert-success::before,
+  .neo-alert-error::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.1), transparent);
+    animation: shimmer 2s infinite;
+    transform: translateX(-100%);
+  }
+  
+  @keyframes shimmer {
+    100% {
+      transform: translateX(100%);
+    }
+  }
+  
+  /* Boutons avec effet Neo-Memphis */
+  .neo-btn-primary {
+    position: relative;
+    transition: all 0.3s ease;
+  }
+  
+  .neo-btn-primary:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 0 rgba(10, 11, 12, 0.1);
+  }
+  
+  .neo-btn-secondary {
+    position: relative;
+    transition: all 0.2s ease;
+  }
+  
+  .neo-btn-secondary:hover {
+    transform: translateY(-1px);
+  }
+  
+  .neo-btn-secondary::after {
+    content: '';
+    position: absolute;
+    bottom: -2px;
+    left: 0;
+    width: 100%;
+    height: 1px;
+    background-color: currentColor;
+    opacity: 0.2;
+    transform: scaleX(0.7);
+    transition: transform 0.3s ease;
+    transform-origin: center;
+  }
+  
+  .neo-btn-secondary:hover::after {
+    transform: scaleX(1);
+  }
+  
+  /* Style pour les éléments décoratifs */
+  .clip-circle {
+    clip-path: circle(50% at 50% 50%);
+  }
+  
+  .clip-triangle {
+    clip-path: polygon(50% 0%, 0% 100%, 100% 100%);
+  }
+  
+  /* Animation subtile pour le formulaire au focus */
+  .neo-form:focus-within {
+    animation: pulse-border 1.5s infinite alternate;
+  }
+  
+  @keyframes pulse-border {
+    0% {
+      box-shadow: 0 0 0 0 rgba(13, 75, 89, 0);
+    }
+    100% {
+      box-shadow: 0 0 0 4px rgba(13, 75, 89, 0.05);
+    }
+  }
+  
+  /* Style pour la prévisualisation */
+  .icon-preview {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 60px;
+    height: 60px;
+    background-color: rgba(13, 75, 89, 0.05);
+    border-radius: 50%;
+  }
+</style>
+
+
+================================================
+File: src/pages/categories/[id]/edit.astro
+================================================
+---
+import BaseLayout from '../../../layouts/BaseLayout.astro';
+import '../../../styles/global.css';
+
+// Récupération de l'ID de la catégorie depuis les paramètres d'URL
+const { id } = Astro.params;
+
+// États du formulaire
+let formSuccess = false;
+let formError = null;
+let category = null;
+
+// Récupération des données de la catégorie existante
+try {
+  const response = await fetch(`http://localhost:1337/api/categories/${id}`);
+  if (!response.ok) {
+    throw new Error(`Erreur lors de la récupération de la catégorie: ${response.status}`);
+  }
+  const data = await response.json();
+  category = data.data;
+} catch (error) {
+  console.error('Erreur lors de la récupération des données:', error);
+  formError = "Impossible de récupérer les données de la catégorie. Vérifiez l'ID ou la connexion à l'API.";
+}
+
+// Traitement de la soumission du formulaire (méthode PUT)
+if (Astro.request.method === 'POST' && category) {
+  try {
+    const formData = await Astro.request.formData();
+    const urlData = new URLSearchParams();
+    urlData.append('name', formData.get('name'));
+    urlData.append('icon', formData.get('icon') || '');
+    const response = await fetch(`http://localhost:1337/api/categories/${id}`, {
+      method: 'PUT',
+      headers: {
+        'Content-Type': 'application/x-www-form-urlencoded',
+      },
+      body: urlData.toString()
+    });
+    if (!response.ok) {
+      const errorData = await response.json();
+      throw new Error(errorData.error?.message || "Une erreur est survenue lors de la modification de la catégorie.");
+    }
+    formSuccess = true;
+    setTimeout(() => {
+      return Astro.redirect('/categories');
+    }, 1500);
+  } catch (error) {
+    console.error('Erreur lors de la soumission du formulaire:', error);
+    formError = error.message || "Une erreur est survenue lors de la modification de la catégorie.";
+  }
+}
+
+const neoColors = ['neo-pink', 'neo-yellow', 'neo-blue', 'neo-mint', 'neo-peach', 'neo-lavender'];
+const accentColor = neoColors[Math.floor(Math.random() * neoColors.length)];
+---
+
+<BaseLayout title="Modifier la catégorie - Économat" description="Modifiez une catégorie existante">
+  <div class="mb-8 md:mb-12">
+    <h2 class="text-2xl md:text-3xl font-bold mb-4 tracking-retro uppercase relative inline-block">
+      <span class="text-petrol">[</span> MODIFIER CATÉGORIE <span class="text-rust">]</span>
+      <div class={`absolute -right-8 -top-8 w-16 h-16 opacity-20 bg-${accentColor} clip-circle hidden md:block`}></div>
+    </h2>
+    <p class="opacity-80 max-w-2xl">
+      Modifiez les informations de la catégorie. Les champs marqués d'un astérisque (*) sont obligatoires.
+    </p>
+  </div>
+
+  {formSuccess && (
+    <div class="bg-neo-mint/10 border border-l-4 border-neo-mint p-4 mb-8 neo-alert-success">
+      <h3 class="font-bold text-neo-mint mb-2">Catégorie modifiée avec succès!</h3>
+      <p class="text-sm">Vous allez être redirigé vers la liste des catégories...</p>
+    </div>
+  )}
+  {formError && (
+    <div class="bg-rust/10 border border-l-4 border-rust p-4 mb-8 neo-alert-error">
+      <h3 class="font-bold text-rust mb-2">Erreur</h3>
+      <p class="text-sm">{formError}</p>
+    </div>
+  )}
+
+  {category ? (
+    <div class="bg-cream border border-night/10 p-6 md:p-8 paper-cut relative overflow-hidden">
+      <div class={`absolute top-0 left-0 w-full h-2 bg-${accentColor}/30`}></div>
+      <div class="absolute bottom-0 right-0 w-24 h-24 opacity-5 clip-triangle transform rotate-12 bg-night"></div>
+      <div class={`absolute top-1/2 right-0 w-3 h-12 bg-${accentColor}/40 transform -translate-y-1/2 hidden lg:block`}></div>
+      <div class="absolute inset-0 bg-grid-dots opacity-5 pointer-events-none"></div>
+      <form method="POST" class="relative z-10 neo-form">
+        <div class="grid grid-cols-1 gap-y-0">
+          <div class="form-field">
+            <label for="category-name" class="block text-sm uppercase tracking-retro mb-1 font-bold">
+              Nom de la catégorie <span class="text-rust">*</span>
+            </label>
+            <div class="relative">
+              <input
+                type="text"
+                id="category-name"
+                name="name"
+                required
+                value={category.attributes.name}
+                class="w-full py-2 px-3 bg-cream border border-night/30 text-sm font-mono focus:border-petrol focus:ring-1 focus:ring-petrol/30 neo-input"
+                placeholder="ex: Produits laitiers, Épices, Boissons..."
+              />
+            </div>
+          </div>
+          <div class="form-field">
+            <label for="category-icon" class="block text-sm uppercase tracking-retro mb-1 font-bold">
+              Icône
+            </label>
+            <div class="relative">
+              <input
+                type="text"
+                id="category-icon"
+                name="icon"
+                value={category.attributes.icon || ''}
+                class="w-full py-2 px-3 bg-cream border border-night/30 text-sm font-mono focus:border-petrol focus:ring-1 focus:ring-petrol/30 neo-input"
+                placeholder="URL d'une image ou nom de l'icône"
+              />
+            </div>
+            <p class="text-xs opacity-60 mt-1">
+              Vous pouvez utiliser une URL d'image ou un nom d'icône (ex: 🍎, 🥛, 🧂)
+            </p>
+          </div>
+        </div>
+        <div class="my-6 flex items-center">
+          <div class={`flex-grow h-px bg-${accentColor}/30`}></div>
+          <div class={`mx-4 w-3 h-3 bg-${accentColor}/60`}></div>
+          <div class="flex-grow h-px bg-night/10"></div>
+        </div>
+        <div class="flex flex-col sm:flex-row justify-center sm:justify-between gap-4 items-center mt-6">
+          <a href="/categories" class="px-6 py-2 border border-night/30 font-bold tracking-wider uppercase text-sm hover:bg-night/5 transition-colors text-center sm:text-left neo-btn-secondary">
+            Annuler
+          </a>
+          <button type="submit" class={`px-8 py-3 bg-petrol text-cream font-bold uppercase tracking-retro hover:bg-${accentColor} transition-colors duration-300 neo-btn-primary relative overflow-hidden`}>
+            <div class="absolute top-0 left-0 w-2 h-full bg-white/10"></div>
+            <span class="relative z-10">💾 Enregistrer les modifications</span>
+          </button>
+        </div>
+      </form>
+    </div>
+  ) : (
+    <div class="bg-cream border border-night/10 p-6 md:p-8 paper-cut relative overflow-hidden flex flex-col items-center justify-center py-16">
+      <div class="w-16 h-16 border-4 border-t-4 border-t-petrol border-night/20 rounded-full animate-spin mb-6"></div>
+      <p class="text-lg font-mono">Chargement de la catégorie...</p>
+    </div>
+  )}
+</BaseLayout>
+
+<style>
+  .neo-input {
+    transition: all 0.2s ease;
+    border-radius: 0;
+  }
+  .neo-input:focus {
+    outline: none;
+    box-shadow: 3px 3px 0 rgba(13, 75, 89, 0.1);
+    transform: translate(-1px, -1px);
+  }
+  .form-field {
+    margin-bottom: 1.5rem;
+  }
+  .neo-alert-success,
+  .neo-alert-error {
+    position: relative;
+    overflow: hidden;
+  }
+  .neo-alert-success::before,
+  .neo-alert-error::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.1), transparent);
+    animation: shimmer 2s infinite;
+    transform: translateX(-100%);
+  }
+  @keyframes shimmer {
+    100% {
+      transform: translateX(100%);
+    }
+  }
+  .neo-btn-primary {
+    position: relative;
+    transition: all 0.3s ease;
+  }
+  .neo-btn-primary:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 0 rgba(10, 11, 12, 0.1);
+  }
+  .neo-btn-secondary {
+    position: relative;
+    transition: all 0.2s ease;
+  }
+  .neo-btn-secondary:hover {
+    transform: translateY(-1px);
+  }
+  .neo-btn-secondary::after {
+    content: '';
+    position: absolute;
+    bottom: -2px;
+    left: 0;
+    width: 100%;
+    height: 1px;
+    background-color: currentColor;
+    opacity: 0.2;
+    transform: scaleX(0.7);
+    transition: transform 0.3s ease;
+    transform-origin: center;
+  }
+  .neo-btn-secondary:hover::after {
+    transform: scaleX(1);
+  }
+  .clip-circle {
+    clip-path: circle(50% at 50% 50%);
+  }
+  .clip-triangle {
+    clip-path: polygon(50% 0%, 0% 100%, 100% 100%);
+  }
+  .neo-form:focus-within {
+    animation: pulse-border 1.5s infinite alternate;
+  }
+  @keyframes pulse-border {
+    0% {
+      box-shadow: 0 0 0 0 rgba(13, 75, 89, 0);
+    }
+    100% {
+      box-shadow: 0 0 0 4px rgba(13, 75, 89, 0.05);
+    }
+  }
+</style>
+
+
+
+================================================
+File: src/pages/items/[id].astro
+================================================
+---
+import BaseLayout from '../../layouts/BaseLayout.astro';
+import '../../styles/global.css';
+
+// Récupération de l'ID depuis les paramètres d'URL
+const { id } = Astro.params;
+
+// Fonction pour récupérer les données d'un item spécifique
+async function fetchItem(id) {
+  try {
+    const response = await fetch(`http://localhost:1337/api/items/${id}?populate=category,location,image`);
+    const data = await response.json();
+    
+    if (!data || !data.data) {
+      throw new Error('Item non trouvé');
+    }
+    
+    return data.data;
+  } catch (error) {
+    console.error('Erreur lors de la récupération de l\'item:', error);
+    return null;
+  }
+}
+
+// Récupération de l'item
+let item = null;
+let error = null;
+
+try {
+  item = await fetchItem(id);
+} catch (e) {
+  error = e.message;
+}
+
+// Formatage de la date d'expiration si elle existe
+const formattedExpiryDate = item?.attributes?.expiryDate 
+  ? new Date(item.attributes.expiryDate).toLocaleDateString('fr-FR', { 
+      year: 'numeric', 
+      month: 'long', 
+      day: 'numeric' 
+    }) 
+  : null;
+
+// Calcul de l'état d'expiration
+let expiryStatus = null;
+if (item?.attributes?.expiryDate) {
+  const today = new Date();
+  const expiry = new Date(item.attributes.expiryDate);
+  const daysUntilExpiry = Math.ceil((expiry.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
+  
+  if (daysUntilExpiry <= 0) {
+    expiryStatus = {
+      label: 'Expiré',
+      class: 'bg-rust text-cream',
+      message: 'Ce produit a dépassé sa date de péremption.'
+    };
+  } else if (daysUntilExpiry <= 7) {
+    expiryStatus = {
+      label: 'Bientôt expiré',
+      class: 'bg-rust/30 text-night',
+      message: `Expire dans ${daysUntilExpiry} jour${daysUntilExpiry > 1 ? 's' : ''}.`
+    };
+  } else {
+    expiryStatus = {
+      label: 'Valide',
+      class: 'bg-pastel-green/30 text-night',
+      message: `Expire dans ${daysUntilExpiry} jours.`
+    };
+  }
+}
+---
+
+<BaseLayout title={item ? `${item.attributes.name} | Économat` : 'Article non trouvé | Économat'}>
+  <div class="mb-8">
+    <a href="/items" class="inline-flex items-center text-petrol hover-underline">
+      <span class="mr-1">&larr;</span>
+      <span>Retour à la liste</span>
+    </a>
+  </div>
+  
+  {error && (
+    <div class="bg-rust/10 border border-l-4 border-rust p-4 mb-8">
+      <h2 class="font-bold text-rust mb-2 text-lg">Erreur</h2>
+      <p class="text-sm">Impossible de charger les détails de cet article. {error}</p>
+      <p class="mt-4 text-sm">
+        <a href="/items" class="text-petrol hover-underline">Retourner à la liste des articles</a>
+      </p>
+    </div>
+  )}
+  
+  {item && (
+    <div class="bg-cream border border-night/20 overflow-hidden">
+      <!-- En-tête avec titre et actions -->
+      <div class="p-6 md:p-8 border-b border-night/10 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+        <h1 class="text-2xl md:text-3xl font-bold tracking-retro">{item.attributes.name}</h1>
+        
+        <div class="flex gap-3">
+          <a href={`/items/${id}/edit`} class="inline-flex items-center justify-center px-4 py-2 bg-petrol text-cream text-sm uppercase tracking-retro hover:bg-petrol/90 transition-colors">
+            Modifier
+          </a>
+          <button class="inline-flex items-center justify-center px-4 py-2 border border-rust text-rust text-sm uppercase tracking-retro hover:bg-rust hover:text-cream transition-colors">
+            Supprimer
+          </button>
+        </div>
+      </div>
+      
+      <!-- Corps du détail -->
+      <div class="md:flex">
+        <!-- Image du produit -->
+        <div class="md:w-1/3 p-6 md:p-8 flex items-center justify-center border-b md:border-b-0 md:border-r border-night/10">
+          {item.attributes.image?.data?.attributes?.url ? (
+            <img 
+              src={`http://localhost:1337${item.attributes.image.data.attributes.url}`} 
+              alt={item.attributes.name}
+              class="max-w-full max-h-72 object-contain"
+            />
+          ) : (
+            <div class="w-full h-48 bg-night/5 flex items-center justify-center text-night/30">
+              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" class="w-12 h-12">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+              </svg>
+            </div>
+          )}
+        </div>
+        
+        <!-- Informations détaillées -->
+        <div class="md:w-2/3 p-6 md:p-8">
+          <!-- Propriétés de base -->
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-8">
+            <div class="border-b border-night/10 pb-4">
+              <p class="text-xs uppercase tracking-retro text-night/60 mb-1">Quantité</p>
+              <p class="text-xl font-mono font-bold">{item.attributes.quantity}</p>
+            </div>
+            
+            {item.attributes.category?.data && (
+              <div class="border-b border-night/10 pb-4">
+                <p class="text-xs uppercase tracking-retro text-night/60 mb-1">Catégorie</p>
+                <p class="font-medium">
+                  <a href={`/categories/${item.attributes.category.data.id}`} class="hover:text-petrol transition-colors">
+                    {item.attributes.category.data.attributes.name}
+                  </a>
+                </p>
+              </div>
+            )}
+            
+            {item.attributes.location?.data && (
+              <div class="border-b border-night/10 pb-4">
+                <p class="text-xs uppercase tracking-retro text-night/60 mb-1">Emplacement</p>
+                <p class="font-medium">
+                  <a href={`/locations/${item.attributes.location.data.id}`} class="hover:text-petrol transition-colors">
+                    {item.attributes.location.data.attributes.name}
+                  </a>
+                </p>
+              </div>
+            )}
+            
+            {formattedExpiryDate && (
+              <div class="border-b border-night/10 pb-4">
+                <p class="text-xs uppercase tracking-retro text-night/60 mb-1">Date d'expiration</p>
+                <p class="font-medium">{formattedExpiryDate}</p>
+                {expiryStatus && (
+                  <p class={`mt-2 inline-block px-2 py-0.5 text-xs ${expiryStatus.class}`}>
+                    {expiryStatus.label} - {expiryStatus.message}
+                  </p>
+                )}
+              </div>
+            )}
+          </div>
+          
+          <!-- Description -->
+          {item.attributes.description && (
+            <div class="mb-8">
+              <h2 class="text-lg font-bold mb-2 tracking-retro">Description</h2>
+              <div class="prose prose-sm max-w-none opacity-80">
+                <p>{item.attributes.description}</p>
+              </div>
+            </div>
+          )}
+          
+          <!-- Notes et informations complémentaires -->
+          {item.attributes.notes && (
+            <div class="bg-night/5 p-4 border-l-4 border-night/20">
+              <h3 class="text-sm font-bold mb-1 tracking-retro">Notes</h3>
+              <p class="text-sm opacity-90">{item.attributes.notes}</p>
+            </div>
+          )}
+        </div>
+      </div>
+      
+      <!-- Pied avec actions de mise à jour rapide -->
+      <div class="p-6 md:p-8 border-t border-night/10 flex flex-wrap gap-3">
+        <button class="inline-flex items-center justify-center px-4 py-2 bg-night/5 border border-night/20 text-sm hover:bg-night/10 transition-colors">
+          - Réduire quantité
+        </button>
+        <button class="inline-flex items-center justify-center px-4 py-2 bg-night/5 border border-night/20 text-sm hover:bg-night/10 transition-colors">
+          + Augmenter quantité
+        </button>
+        <button class="inline-flex items-center justify-center px-4 py-2 bg-rust/10 border border-rust/20 text-rust text-sm hover:bg-rust/20 transition-colors">
+          Marquer comme épuisé
+        </button>
+      </div>
+    </div>
+  )}
+</BaseLayout>
+
+
+================================================
+File: src/pages/items/example.astro
+================================================
+---
+import BaseLayout from '../../layouts/BaseLayout.astro';
+import '../../styles/global.css';
+
+// Page d'exemple pour les articles (utilisateur non connecté)
+---
+
+<BaseLayout title="Aperçu des articles" description="Exemple d'accès restreint">
+  <div class="max-w-xl mx-auto py-16 text-center">
+    <h1 class="text-3xl font-bold mb-6">Accès restreint</h1>
+    <p class="mb-6">Vous devez être connecté pour consulter la liste complète des articles.</p>
+    <div class="mb-8">
+      <h2 class="text-xl font-bold mb-2">Exemple d'article</h2>
+      <div class="bg-cream border border-night/10 p-6 rounded shadow-sm inline-block">
+        <h3 class="text-lg font-bold mb-2">Lait</h3>
+        <p class="text-sm opacity-80 mb-1">Catégorie : Produits laitiers</p>
+        <p class="text-xs text-night/60">Emplacement : Frigo</p>
+      </div>
+    </div>
+    <a href="/auth/login" class="px-6 py-2 bg-petrol text-cream font-bold uppercase tracking-wider neo-btn-primary hover:bg-neo-mint transition-colors">Se connecter</a>
+  </div>
+  <script type="module">
+    // Redirige uniquement si on est sur la page d'exemple ET connecté
+    if (window.localStorage.getItem('jwt') && window.location.pathname === '/items/example') {
+      window.location.href = '/items';
+    }
+  </script>
+</BaseLayout>
+
+
+
+================================================
+File: src/pages/items/index.astro
+================================================
+---
+import BaseLayout from '../../layouts/BaseLayout.astro';
+import ItemCard from '../../components/ItemCard.astro';
+import '../../styles/global.css';
+
+// Fonction utilitaire pour vérifier l'auth côté client (token JWT dans localStorage)
+function isAuthenticated() {
+  if (typeof window !== 'undefined') {
+    return !!window.localStorage.getItem('jwt');
+  }
+  return false;
+}
+
+// Fonction pour récupérer les données depuis l'API Strapi
+async function fetchItems() {
+  try {
+    const response = await fetch('http://localhost:1337/api/items?populate=category,location');
+    const data = await response.json();
+    
+    if (!data || !data.data) {
+      console.error('Données invalides reçues de l\'API Strapi');
+      return [];
+    }
+    
+    return data.data;
+  } catch (error) {
+    console.error('Erreur lors de la récupération des items:', error);
+    return [];
+  }
+}
+
+// Récupération des données
+let items = [];
+let error = null;
+
+try {
+  items = await fetchItems();
+} catch (e) {
+  error = "Impossible de se connecter à l'API Strapi. Assurez-vous que le serveur est en cours d'exécution sur localhost:1337.";
+  console.error(error);
+}
+
+// Récupération des filtres depuis l'URL
+const { searchParams } = Astro.url;
+const categoryFilter = searchParams.get('category');
+const locationFilter = searchParams.get('location');
+
+// Application des filtres si nécessaire
+let filteredItems = [...items];
+
+if (categoryFilter) {
+  filteredItems = filteredItems.filter(item => 
+    item.attributes.category?.data?.id.toString() === categoryFilter
+  );
+}
+
+if (locationFilter) {
+  filteredItems = filteredItems.filter(item => 
+    item.attributes.location?.data?.id.toString() === locationFilter
+  );
+}
+
+// Extraction des catégories et lieux uniques pour les filtres
+const uniqueCategories = (Array.from(new Set(
+  items
+    .filter((item: any) => item.attributes.category?.data)
+    .map((item: any) => JSON.stringify({
+      id: item.attributes.category.data.id,
+      name: item.attributes.category.data.attributes.name
+    }))
+)) as string[]).map((str) => JSON.parse(str));
+
+const uniqueLocations = (Array.from(new Set(
+  items
+    .filter((item: any) => item.attributes.location?.data)
+    .map((item: any) => JSON.stringify({
+      id: item.attributes.location.data.id,
+      name: item.attributes.location.data.attributes.name
+    }))
+)) as string[]).map((str) => JSON.parse(str));
+---
+
+<BaseLayout title="Articles - Économat" description="Liste des articles disponibles dans mon économat">
+  <div class="mb-8 md:mb-12">
+    <h2 class="text-2xl md:text-3xl font-bold mb-4 tracking-retro uppercase">
+      <span class="text-petrol">[</span> CATALOGUE <span class="text-rust">]</span>
+    </h2>
+    <p class="opacity-80 max-w-2xl">
+      Consultez notre inventaire complet d'articles. Utilisez les filtres ci-dessous pour affiner votre recherche par catégorie ou lieu de stockage.
+    </p>
+  </div>
+  
+  <!-- Zone de filtre -->
+  <div class="bg-night/5 p-4 md:p-6 mb-8 md:mb-10 flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+    <div class="flex flex-wrap gap-3">
+      <div class="filter-group">
+        <label for="category-filter" class="block text-xs uppercase tracking-retro mb-1">Catégorie</label>
+        <select 
+          id="category-filter" 
+          class="py-1 px-3 bg-cream border border-night/30 text-sm font-mono focus:border-petrol"
+          onchange="window.location.href = this.value"
+        >
+          <option value="/items">Toutes les catégories</option>
+          {uniqueCategories.map((category) => (
+            <option 
+              value={`/items?category=${category.id}${locationFilter ? `&location=${locationFilter}` : ''}`}
+              selected={categoryFilter === category.id.toString()}
+            >
+              {category.name}
+            </option>
+          ))}
+        </select>
+      </div>
+      
+      <div class="filter-group">
+        <label for="location-filter" class="block text-xs uppercase tracking-retro mb-1">Emplacement</label>
+        <select 
+          id="location-filter" 
+          class="py-1 px-3 bg-cream border border-night/30 text-sm font-mono focus:border-petrol"
+          onchange="window.location.href = this.value"
+        >
+          <option value={categoryFilter ? `/items?category=${categoryFilter}` : '/items'}>
+            Tous les emplacements
+          </option>
+          {uniqueLocations.map((location) => (
+            <option 
+              value={`/items?location=${location.id}${categoryFilter ? `&category=${categoryFilter}` : ''}`}
+              selected={locationFilter === location.id.toString()}
+            >
+              {location.name}
+            </option>
+          ))}
+        </select>
+      </div>
+    </div>
+    
+    <a 
+      href="/items" 
+      class="text-xs uppercase tracking-retro px-3 py-1.5 border border-night/20 hover:bg-night hover:text-cream transition-colors"
+      class:list={{ hidden: !categoryFilter && !locationFilter }}
+    >
+      <span class="font-bold">X</span> Réinitialiser les filtres
+    </a>
+  </div>
+  
+  {error && (
+    <div class="bg-rust/10 border border-l-4 border-rust p-4 mb-8">
+      <h3 class="font-bold text-rust mb-2">Erreur de connexion</h3>
+      <p class="text-sm">{error}</p>
+      <p class="mt-2 text-sm">
+        Assurez-vous que le serveur Strapi est démarré et accessible sur http://localhost:1337.
+      </p>
+    </div>
+  )}
+  
+  {!error && filteredItems.length === 0 && (
+    <div class="bg-night/5 border border-night/20 p-8 mb-8 text-center">
+      <h3 class="text-xl font-bold mb-2">Aucun article trouvé</h3>
+      <p class="opacity-80 mb-4">
+        Aucun article ne correspond à vos critères de recherche.
+      </p>
+      <a 
+        href="/items" 
+        class="inline-flex items-center text-petrol hover-underline"
+      >
+        <span>Voir tous les articles</span>
+        <span class="ml-1">→</span>
+      </a>
+    </div>
+  )}
+  
+  <!-- Grille des articles -->
+  <div class="grid grid-cols-1 gap-6">
+    {filteredItems.map((item) => (
+      <ItemCard
+        id={item.id}
+        name={item.attributes.name}
+        quantity={item.attributes.quantity}
+        category={item.attributes.category?.data ? {
+          id: item.attributes.category.data.id,
+          name: item.attributes.category.data.attributes.name
+        } : undefined}
+        location={item.attributes.location?.data ? {
+          id: item.attributes.location.data.id,
+          name: item.attributes.location.data.attributes.name
+        } : undefined}
+        expiryDate={item.attributes.expiryDate}
+        imageUrl={item.attributes.image?.data?.attributes?.url 
+          ? `http://localhost:1337${item.attributes.image.data.attributes.url}`
+          : undefined}
+      />
+    ))}
+  </div>
+  
+  <!-- Section de bas de page avec bouton d'ajout -->
+  <div class="mt-12 md:mt-16 text-center">
+    <a 
+      href="/items/new" 
+      class="inline-flex items-center justify-center px-6 py-2 bg-petrol text-cream font-bold uppercase tracking-retro hover:bg-rust transition-colors duration-300"
+    >
+      <span class="mr-2">+ Ajouter un article</span>
+    </a>
+  </div>
+</BaseLayout>
+
+<script type="module">
+  function checkAuthAndRedirect() {
+    const jwt = window.localStorage.getItem('jwt');
+    if (!jwt) {
+      window.location.href = '/auth/login';
+    }
+  }
+  checkAuthAndRedirect();
+</script>
+
+<style>
+  /* Styles supplémentaires pour la page des items */
+  .filter-group {
+    position: relative;
+  }
+  
+  select {
+    appearance: none;
+    padding-right: 2rem;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' fill='currentColor' viewBox='0 0 16 16'%3E%3Cpath d='M2 5l6 6 6-6H2z'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 0.5rem center;
+    background-size: 16px 12px;
+  }
+  
+  .hidden {
+    display: none;
+  }
+</style>
+
+
+================================================
+File: src/pages/items/new.astro
+================================================
+---
+import BaseLayout from '../../layouts/BaseLayout.astro';
+import SelectRemote from '../../components/SelectRemote.astro';
+import '../../styles/global.css';
+
+// Gestion de la soumission du formulaire
+let formSuccess = false;
+let formError = null;
+
+if (Astro.request.method === 'POST') {
+  try {
+    const formData = await Astro.request.formData();
+    
+    // Récupération des données du formulaire
+    const itemData = {
+      data: {
+        name: formData.get('name'),
+        quantity: parseFloat(formData.get('quantity')),
+        unit: formData.get('unit'),
+        expiration_date: formData.get('expiration_date'),
+        notes: formData.get('notes'),
+        category: formData.get('category'),
+        location: formData.get('storage_location')
+      }
+    };
+    
+    // Envoi des données à l'API Strapi
+    const response = await fetch('http://localhost:1337/api/items', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(itemData)
+    });
+    
+    if (!response.ok) {
+      const errorData = await response.json();
+      throw new Error(errorData.error?.message || 'Une erreur est survenue lors de la création de l\'article.');
+    }
+    
+    formSuccess = true;
+    
+    // Redirection vers la liste des articles après un court délai
+    setTimeout(() => {
+      return Astro.redirect('/items');
+    }, 1500);
+    
+  } catch (error) {
+    console.error('Erreur lors de la soumission du formulaire:', error);
+    formError = error.message || 'Une erreur est survenue lors de la création de l\'article.';
+  }
+}
+
+// Génération d'une couleur Neo-Memphis aléatoire pour les éléments décoratifs
+const neoColors = ['neo-pink', 'neo-yellow', 'neo-blue', 'neo-mint', 'neo-peach', 'neo-lavender'];
+const accentColor = neoColors[Math.floor(Math.random() * neoColors.length)];
+
+// Unités disponibles pour le select
+const units = [
+  { value: 'g', label: 'grammes (g)' },
+  { value: 'kg', label: 'kilogrammes (kg)' },
+  { value: 'L', label: 'litres (L)' },
+  { value: 'mL', label: 'millilitres (mL)' },
+  { value: 'pièce', label: 'pièce(s)' }
+];
+
+// Date minimale (aujourd'hui) pour le champ date d'expiration
+const today = new Date().toISOString().split('T')[0];
+---
+
+<BaseLayout title="Ajouter un article - Économat" description="Ajoutez un nouvel article à votre économat">
+  <div class="mb-8 md:mb-12">
+    <h2 class="text-2xl md:text-3xl font-bold mb-4 tracking-retro uppercase relative inline-block">
+      <span class="text-petrol">[</span> NOUVEL ARTICLE <span class="text-rust">]</span>
+      
+      <!-- Élément décoratif Neo-Memphis -->
+      <div class={`absolute -right-8 -top-8 w-16 h-16 opacity-20 bg-${accentColor} clip-circle hidden md:block`}></div>
+    </h2>
+    <p class="opacity-80 max-w-2xl">
+      Utilisez ce formulaire pour ajouter un nouvel article à votre économat. Les champs marqués d'un astérisque (*) sont obligatoires.
+    </p>
+  </div>
+  
+  <!-- Affichage des messages de succès ou d'erreur -->
+  {formSuccess && (
+    <div class="bg-neo-mint/10 border border-l-4 border-neo-mint p-4 mb-8 neo-alert-success">
+      <h3 class="font-bold text-neo-mint mb-2">Article créé avec succès!</h3>
+      <p class="text-sm">Vous allez être redirigé vers la liste des articles...</p>
+    </div>
+  )}
+  
+  {formError && (
+    <div class="bg-rust/10 border border-l-4 border-rust p-4 mb-8 neo-alert-error">
+      <h3 class="font-bold text-rust mb-2">Erreur lors de la création</h3>
+      <p class="text-sm">{formError}</p>
+    </div>
+  )}
+  
+  <!-- Formulaire de création d'article avec style Neo-Memphis -->
+  <div class="bg-cream border border-night/10 p-6 md:p-8 paper-cut relative overflow-hidden">
+    <!-- Éléments décoratifs Neo-Memphis -->
+    <div class={`absolute top-0 left-0 w-full h-2 bg-${accentColor}/30`}></div>
+    <div class="absolute bottom-0 right-0 w-24 h-24 opacity-5 clip-triangle transform rotate-12 bg-night"></div>
+    <div class={`absolute top-1/2 right-0 w-3 h-12 bg-${accentColor}/40 transform -translate-y-1/2 hidden lg:block`}></div>
+    
+    <!-- Grille pointillée décorative en arrière-plan -->
+    <div class="absolute inset-0 bg-grid-dots opacity-5 pointer-events-none"></div>
+    
+    <form method="POST" class="relative z-10 neo-form">
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-0">
+        <!-- Champ Nom -->
+        <div class="form-field">
+          <label for="item-name" class="block text-sm uppercase tracking-retro mb-1 font-bold">
+            Nom de l'article <span class="text-rust">*</span>
+          </label>
+          <div class="relative">
+            <input 
+              type="text" 
+              id="item-name" 
+              name="name" 
+              required
+              class="w-full py-2 px-3 bg-cream border border-night/30 text-sm font-mono focus:border-petrol focus:ring-1 focus:ring-petrol/30 neo-input"
+              placeholder="ex: Lait, Pain, Farine..."
+            />
+          </div>
+        </div>
+        
+        <!-- Champ Quantité avec Unité -->
+        <div class="grid grid-cols-3 gap-2">
+          <!-- Quantité -->
+          <div class="form-field col-span-1">
+            <label for="item-quantity" class="block text-sm uppercase tracking-retro mb-1 font-bold">
+              Quantité <span class="text-rust">*</span>
+            </label>
+            <input 
+              type="number" 
+              id="item-quantity" 
+              name="quantity" 
+              step="0.01"
+              min="0.01"
+              required
+              class="w-full py-2 px-3 bg-cream border border-night/30 text-sm font-mono focus:border-petrol focus:ring-1 focus:ring-petrol/30 neo-input"
+              placeholder="1.5"
+            />
+          </div>
+          
+          <!-- Unité -->
+          <div class="form-field col-span-2">
+            <label for="item-unit" class="block text-sm uppercase tracking-retro mb-1 font-bold">
+              Unité <span class="text-rust">*</span>
+            </label>
+            <div class="relative">
+              <select 
+                id="item-unit" 
+                name="unit"
+                required
+                class="w-full py-2 px-3 bg-cream border border-night/30 text-sm font-mono focus:border-petrol focus:ring-1 focus:ring-petrol/30 appearance-none neo-select"
+              >
+                <option value="" disabled selected>Sélectionner...</option>
+                {units.map(unit => (
+                  <option value={unit.value}>{unit.label}</option>
+                ))}
+              </select>
+              <!-- Flèche stylisée Neo-Memphis -->
+              <div class="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-night">
+                <svg class="w-4 h-4 fill-current" viewBox="0 0 20 20">
+                  <path d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z"></path>
+                </svg>
+              </div>
+            </div>
+          </div>
+        </div>
+        
+        <!-- Date d'expiration -->
+        <div class="form-field">
+          <label for="item-expiration" class="block text-sm uppercase tracking-retro mb-1 font-bold">
+            Date d'expiration
+          </label>
+          <input 
+            type="date" 
+            id="item-expiration" 
+            name="expiration_date"
+            min={today}
+            class="w-full py-2 px-3 bg-cream border border-night/30 text-sm font-mono focus:border-petrol focus:ring-1 focus:ring-petrol/30 neo-input"
+          />
+          <p class="text-xs opacity-60 mt-1">Laissez vide si pas applicable</p>
+        </div>
+        
+        <!-- Catégorie (utilisation du SelectRemote) -->
+        <SelectRemote 
+          label="Catégorie" 
+          endpoint="/api/categories" 
+          valueKey="id" 
+          labelKey="name" 
+          name="category"
+          required={true}
+        />
+        
+        <!-- Emplacement (utilisation du SelectRemote) -->
+        <SelectRemote 
+          label="Lieu de stockage" 
+          endpoint="/api/locations" 
+          valueKey="id" 
+          labelKey="name" 
+          name="storage_location"
+          required={true}
+        />
+        
+        <!-- Notes (textarea pleine largeur) -->
+        <div class="form-field md:col-span-2">
+          <label for="item-notes" class="block text-sm uppercase tracking-retro mb-1 font-bold">
+            Notes
+          </label>
+          <textarea 
+            id="item-notes" 
+            name="notes" 
+            rows="3"
+            class="w-full py-2 px-3 bg-cream border border-night/30 text-sm font-mono focus:border-petrol focus:ring-1 focus:ring-petrol/30 neo-input"
+            placeholder="Notes supplémentaires sur cet article..."
+          ></textarea>
+        </div>
+      </div>
+      
+      <!-- Ligne séparatrice décorative Neo-Memphis -->
+      <div class="my-6 flex items-center">
+        <div class={`flex-grow h-px bg-${accentColor}/30`}></div>
+        <div class={`mx-4 w-3 h-3 bg-${accentColor}/60`}></div>
+        <div class="flex-grow h-px bg-night/10"></div>
+      </div>
+      
+      <!-- Boutons d'action -->
+      <div class="flex flex-col sm:flex-row justify-center sm:justify-between gap-4 items-center mt-6">
+        <a 
+          href="/items" 
+          class="px-6 py-2 border border-night/30 font-bold tracking-wider uppercase text-sm hover:bg-night/5 transition-colors text-center sm:text-left neo-btn-secondary"
+        >
+          Annuler
+        </a>
+        
+        <button 
+          type="submit" 
+          class={`px-8 py-3 bg-petrol text-cream font-bold uppercase tracking-retro hover:bg-${accentColor} transition-colors duration-300 neo-btn-primary relative overflow-hidden`}
+        >
+          <!-- Élément décoratif Neo-Memphis -->
+          <div class="absolute top-0 left-0 w-2 h-full bg-white/10"></div>
+          <span class="relative z-10">+ Ajouter l'article</span>
+        </button>
+      </div>
+    </form>
+  </div>
+</BaseLayout>
+
+<style>
+  /* Styles Neo-Memphis pour le formulaire */
+  .neo-input,
+  .neo-select {
+    transition: all 0.2s ease;
+    border-radius: 0;
+  }
+  
+  .neo-input:focus,
+  .neo-select:focus {
+    outline: none;
+    box-shadow: 3px 3px 0 rgba(13, 75, 89, 0.1);
+    transform: translate(-1px, -1px);
+  }
+  
+  .form-field {
+    margin-bottom: 1.5rem;
+  }
+  
+  /* Animation pour les alertes */
+  .neo-alert-success,
+  .neo-alert-error {
+    position: relative;
+    overflow: hidden;
+  }
+  
+  .neo-alert-success::before,
+  .neo-alert-error::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.1), transparent);
+    animation: shimmer 2s infinite;
+    transform: translateX(-100%);
+  }
+  
+  @keyframes shimmer {
+    100% {
+      transform: translateX(100%);
+    }
+  }
+  
+  /* Boutons avec effet Neo-Memphis */
+  .neo-btn-primary {
+    position: relative;
+    transition: all 0.3s ease;
+  }
+  
+  .neo-btn-primary:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 0 rgba(10, 11, 12, 0.1);
+  }
+  
+  .neo-btn-secondary {
+    position: relative;
+    transition: all 0.2s ease;
+  }
+  
+  .neo-btn-secondary:hover {
+    transform: translateY(-1px);
+  }
+  
+  .neo-btn-secondary::after {
+    content: '';
+    position: absolute;
+    bottom: -2px;
+    left: 0;
+    width: 100%;
+    height: 1px;
+    background-color: currentColor;
+    opacity: 0.2;
+    transform: scaleX(0.7);
+    transition: transform 0.3s ease;
+    transform-origin: center;
+  }
+  
+  .neo-btn-secondary:hover::after {
+    transform: scaleX(1);
+  }
+  
+  /* Style pour les éléments décoratifs */
+  .clip-circle {
+    clip-path: circle(50% at 50% 50%);
+  }
+  
+  .clip-triangle {
+    clip-path: polygon(50% 0%, 0% 100%, 100% 100%);
+  }
+  
+  /* Animation subtile pour le formulaire au focus */
+  .neo-form:focus-within {
+    animation: pulse-border 1.5s infinite alternate;
+  }
+  
+  @keyframes pulse-border {
+    0% {
+      box-shadow: 0 0 0 0 rgba(13, 75, 89, 0);
+    }
+    100% {
+      box-shadow: 0 0 0 4px rgba(13, 75, 89, 0.05);
+    }
+  }
+</style>
+
+
+================================================
+File: src/pages/items/[id]/edit.astro
+================================================
+---
+import BaseLayout from '../../../layouts/BaseLayout.astro';
+import SelectRemote from '../../../components/SelectRemote.astro';
+import '../../../styles/global.css';
+
+// Récupération de l'ID de l'article depuis les paramètres d'URL
+const { id } = Astro.params;
+
+// États du formulaire
+let formSuccess = false;
+let formError = null;
+let item = null;
+
+// Récupération des données de l'article existant
+try {
+  const response = await fetch(`http://localhost:1337/api/items/${id}?populate=*`);
+  
+  if (!response.ok) {
+    throw new Error(`Erreur lors de la récupération de l'article: ${response.status}`);
+  }
+  
+  const data = await response.json();
+  item = data.data;
+  
+} catch (error) {
+  console.error('Erreur lors de la récupération des données:', error);
+  formError = "Impossible de récupérer les données de l'article. Vérifiez l'ID ou la connexion à l'API.";
+}
+
+// Traitement de la soumission du formulaire (méthode PUT)
+if (Astro.request.method === 'POST' && item) {
+  try {
+    const formData = await Astro.request.formData();
+    
+    // Construction de l'objet de données pour la mise à jour
+    const itemData = {
+      data: {
+        name: formData.get('name'),
+        quantity: parseFloat(formData.get('quantity')),
+        unit: formData.get('unit'),
+        expiration_date: formData.get('expiration_date') || null,
+        notes: formData.get('notes') || '',
+        category: formData.get('category'),
+        location: formData.get('storage_location')
+      }
+    };
+    
+    // Envoi des données à l'API Strapi avec méthode PUT
+    const response = await fetch(`http://localhost:1337/api/items/${id}`, {
+      method: 'PUT',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(itemData)
+    });
+    
+    if (!response.ok) {
+      const errorData = await response.json();
+      throw new Error(errorData.error?.message || "Une erreur est survenue lors de la mise à jour de l'article.");
+    }
+    
+    formSuccess = true;
+    
+    // Redirection vers la liste des articles après un court délai
+    setTimeout(() => {
+      return Astro.redirect('/items');
+    }, 1500);
+    
+  } catch (error) {
+    console.error('Erreur lors de la soumission du formulaire:', error);
+    formError = error.message || "Une erreur est survenue lors de la mise à jour de l'article.";
+  }
+}
+
+// Génération d'une couleur Neo-Memphis pour les éléments décoratifs
+// Utilise l'ID de l'article comme seed pour avoir toujours la même couleur pour le même article
+const neoColors = ['neo-pink', 'neo-yellow', 'neo-blue', 'neo-mint', 'neo-peach', 'neo-lavender'];
+const accentColor = item ? neoColors[parseInt(id) % neoColors.length] : 'neo-blue';
+
+// Unités disponibles pour le select
+const units = [
+  { value: 'g', label: 'grammes (g)' },
+  { value: 'kg', label: 'kilogrammes (kg)' },
+  { value: 'L', label: 'litres (L)' },
+  { value: 'mL', label: 'millilitres (mL)' },
+  { value: 'pièce', label: 'pièce(s)' }
+];
+
+// Date minimale (aujourd'hui) pour le champ date d'expiration
+const today = new Date().toISOString().split('T')[0];
+
+// Formatage de la date d'expiration pour le champ date (si disponible)
+const formattedExpiryDate = item?.attributes?.expiration_date 
+  ? new Date(item.attributes.expiration_date).toISOString().split('T')[0]
+  : '';
+---
+
+<BaseLayout title={`Modifier ${item?.attributes?.name || 'l\'article'} - Économat`} description="Modifiez un article existant dans votre économat">
+  <div class="mb-8 md:mb-12">
+    <h2 class="text-2xl md:text-3xl font-bold mb-4 tracking-retro uppercase relative inline-block">
+      <span class="text-petrol">[</span> MODIFIER L'ARTICLE <span class="text-rust">]</span>
+      
+      <!-- Élément décoratif Neo-Memphis -->
+      <div class={`absolute -right-8 -top-8 w-16 h-16 opacity-20 bg-${accentColor} clip-circle hidden md:block`}></div>
+    </h2>
+    
+    {item && (
+      <p class="text-xl font-mono mb-2">{item.attributes.name}</p>
+    )}
+    
+    <p class="opacity-80 max-w-2xl">
+      Modifiez les informations de cet article. Les champs marqués d'un astérisque (*) sont obligatoires.
+    </p>
+  </div>
+  
+  <!-- Affichage des messages de succès ou d'erreur -->
+  {formSuccess && (
+    <div class="bg-neo-mint/10 border border-l-4 border-neo-mint p-4 mb-8 neo-alert-success">
+      <h3 class="font-bold text-neo-mint mb-2">Article modifié avec succès!</h3>
+      <p class="text-sm">Vous allez être redirigé vers la liste des articles...</p>
+    </div>
+  )}
+  
+  {formError && (
+    <div class="bg-rust/10 border border-l-4 border-rust p-4 mb-8 neo-alert-error">
+      <h3 class="font-bold text-rust mb-2">Erreur</h3>
+      <p class="text-sm">{formError}</p>
+    </div>
+  )}
+  
+  {/* Affichage du formulaire uniquement si l'article existe */}
+  {item ? (
+    <div class="bg-cream border border-night/10 p-6 md:p-8 paper-cut relative overflow-hidden">
+      <!-- Éléments décoratifs Neo-Memphis -->
+      <div class={`absolute top-0 left-0 w-full h-2 bg-${accentColor}/30`}></div>
+      <div class="absolute bottom-0 right-0 w-24 h-24 opacity-5 clip-triangle transform rotate-12 bg-night"></div>
+      <div class={`absolute top-1/2 right-0 w-3 h-12 bg-${accentColor}/40 transform -translate-y-1/2 hidden lg:block`}></div>
+      
+      <!-- Grille pointillée décorative en arrière-plan -->
+      <div class="absolute inset-0 bg-grid-dots opacity-5 pointer-events-none"></div>
+      
+      <form method="POST" class="relative z-10 neo-form">
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-0">
+          <!-- Champ Nom -->
+          <div class="form-field">
+            <label for="item-name" class="block text-sm uppercase tracking-retro mb-1 font-bold">
+              Nom de l'article <span class="text-rust">*</span>
+            </label>
+            <div class="relative">
+              <input 
+                type="text" 
+                id="item-name" 
+                name="name" 
+                required
+                value={item.attributes.name}
+                class="w-full py-2 px-3 bg-cream border border-night/30 text-sm font-mono focus:border-petrol focus:ring-1 focus:ring-petrol/30 neo-input"
+                placeholder="ex: Lait, Pain, Farine..."
+              />
+            </div>
+          </div>
+          
+          <!-- Champ Quantité avec Unité -->
+          <div class="grid grid-cols-3 gap-2">
+            <!-- Quantité -->
+            <div class="form-field col-span-1">
+              <label for="item-quantity" class="block text-sm uppercase tracking-retro mb-1 font-bold">
+                Quantité <span class="text-rust">*</span>
+              </label>
+              <input 
+                type="number" 
+                id="item-quantity" 
+                name="quantity" 
+                step="0.01"
+                min="0.01"
+                required
+                value={item.attributes.quantity}
+                class="w-full py-2 px-3 bg-cream border border-night/30 text-sm font-mono focus:border-petrol focus:ring-1 focus:ring-petrol/30 neo-input"
+                placeholder="1.5"
+              />
+            </div>
+            
+            <!-- Unité -->
+            <div class="form-field col-span-2">
+              <label for="item-unit" class="block text-sm uppercase tracking-retro mb-1 font-bold">
+                Unité <span class="text-rust">*</span>
+              </label>
+              <div class="relative">
+                <select 
+                  id="item-unit" 
+                  name="unit"
+                  required
+                  class="w-full py-2 px-3 bg-cream border border-night/30 text-sm font-mono focus:border-petrol focus:ring-1 focus:ring-petrol/30 appearance-none neo-select"
+                >
+                  <option value="" disabled>Sélectionner...</option>
+                  {units.map(unit => (
+                    <option value={unit.value} selected={item.attributes.unit === unit.value}>{unit.label}</option>
+                  ))}
+                </select>
+                <!-- Flèche stylisée Neo-Memphis -->
+                <div class="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-night">
+                  <svg class="w-4 h-4 fill-current" viewBox="0 0 20 20">
+                    <path d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z"></path>
+                  </svg>
+                </div>
+              </div>
+            </div>
+          </div>
+          
+          <!-- Date d'expiration -->
+          <div class="form-field">
+            <label for="item-expiration" class="block text-sm uppercase tracking-retro mb-1 font-bold">
+              Date d'expiration
+            </label>
+            <input 
+              type="date" 
+              id="item-expiration" 
+              name="expiration_date"
+              min={today}
+              value={formattedExpiryDate}
+              class="w-full py-2 px-3 bg-cream border border-night/30 text-sm font-mono focus:border-petrol focus:ring-1 focus:ring-petrol/30 neo-input"
+            />
+            <p class="text-xs opacity-60 mt-1">Laissez vide si pas applicable</p>
+          </div>
+          
+          <!-- Catégorie (utilisation du SelectRemote) -->
+          <SelectRemote 
+            label="Catégorie" 
+            endpoint="/api/categories" 
+            valueKey="id" 
+            labelKey="name" 
+            name="category"
+            required={true}
+            selectedValue={item.attributes.category?.data?.id}
+          />
+          
+          <!-- Emplacement (utilisation du SelectRemote) -->
+          <SelectRemote 
+            label="Lieu de stockage" 
+            endpoint="/api/locations" 
+            valueKey="id" 
+            labelKey="name" 
+            name="storage_location"
+            required={true}
+            selectedValue={item.attributes.location?.data?.id}
+          />
+          
+          <!-- Notes (textarea pleine largeur) -->
+          <div class="form-field md:col-span-2">
+            <label for="item-notes" class="block text-sm uppercase tracking-retro mb-1 font-bold">
+              Notes
+            </label>
+            <textarea 
+              id="item-notes" 
+              name="notes" 
+              rows="3"
+              class="w-full py-2 px-3 bg-cream border border-night/30 text-sm font-mono focus:border-petrol focus:ring-1 focus:ring-petrol/30 neo-input"
+              placeholder="Notes supplémentaires sur cet article..."
+            >{item.attributes.notes}</textarea>
+          </div>
+        </div>
+        
+        <!-- Ligne séparatrice décorative Neo-Memphis -->
+        <div class="my-6 flex items-center">
+          <div class={`flex-grow h-px bg-${accentColor}/30`}></div>
+          <div class={`mx-4 w-3 h-3 bg-${accentColor}/60`}></div>
+          <div class="flex-grow h-px bg-night/10"></div>
+        </div>
+        
+        <!-- Boutons d'action -->
+        <div class="flex flex-col sm:flex-row justify-center sm:justify-between gap-4 items-center mt-6">
+          <div class="flex flex-col sm:flex-row gap-2">
+            <a 
+              href={`/items/${id}`} 
+              class="px-6 py-2 border border-night/30 font-bold tracking-wider uppercase text-sm hover:bg-night/5 transition-colors text-center sm:text-left neo-btn-secondary"
+            >
+              Annuler
+            </a>
+            
+            <a 
+              href="/items" 
+              class="px-6 py-2 font-bold tracking-wider uppercase text-sm hover:underline transition-all text-center sm:text-left text-night/70"
+            >
+              ← Retour à la liste
+            </a>
+          </div>
+          
+          <button 
+            type="submit" 
+            class={`px-8 py-3 bg-petrol text-cream font-bold uppercase tracking-retro hover:bg-${accentColor} transition-colors duration-300 neo-btn-primary relative overflow-hidden`}
+          >
+            <!-- Élément décoratif Neo-Memphis -->
+            <div class="absolute top-0 left-0 w-2 h-full bg-white/10"></div>
+            <span class="relative z-10">💾 Enregistrer les modifications</span>
+          </button>
+        </div>
+      </form>
+    </div>
+  ) : (
+    <div class="bg-cream border border-night/10 p-6 md:p-8 paper-cut relative overflow-hidden flex flex-col items-center justify-center py-16">
+      <div class="w-16 h-16 border-4 border-t-4 border-t-petrol border-night/20 rounded-full animate-spin mb-6"></div>
+      <p class="text-lg font-mono">Chargement de l'article...</p>
+      <p class="text-sm opacity-70 mt-2">Si le chargement persiste, vérifiez votre connexion ou l'ID de l'article.</p>
+    </div>
+  )}
+</BaseLayout>
+
+<style>
+  /* Styles Neo-Memphis pour le formulaire */
+  .neo-input,
+  .neo-select {
+    transition: all 0.2s ease;
+    border-radius: 0;
+  }
+  
+  .neo-input:focus,
+  .neo-select:focus {
+    outline: none;
+    box-shadow: 3px 3px 0 rgba(13, 75, 89, 0.1);
+    transform: translate(-1px, -1px);
+  }
+  
+  .form-field {
+    margin-bottom: 1.5rem;
+  }
+  
+  /* Animation pour les alertes */
+  .neo-alert-success,
+  .neo-alert-error {
+    position: relative;
+    overflow: hidden;
+  }
+  
+  .neo-alert-success::before,
+  .neo-alert-error::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.1), transparent);
+    animation: shimmer 2s infinite;
+    transform: translateX(-100%);
+  }
+  
+  @keyframes shimmer {
+    100% {
+      transform: translateX(100%);
+    }
+  }
+  
+  /* Boutons avec effet Neo-Memphis */
+  .neo-btn-primary {
+    position: relative;
+    transition: all 0.3s ease;
+  }
+  
+  .neo-btn-primary:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 0 rgba(10, 11, 12, 0.1);
+  }
+  
+  .neo-btn-secondary {
+    position: relative;
+    transition: all 0.2s ease;
+  }
+  
+  .neo-btn-secondary:hover {
+    transform: translateY(-1px);
+  }
+  
+  .neo-btn-secondary::after {
+    content: '';
+    position: absolute;
+    bottom: -2px;
+    left: 0;
+    width: 100%;
+    height: 1px;
+    background-color: currentColor;
+    opacity: 0.2;
+    transform: scaleX(0.7);
+    transition: transform 0.3s ease;
+    transform-origin: center;
+  }
+  
+  .neo-btn-secondary:hover::after {
+    transform: scaleX(1);
+  }
+  
+  /* Style pour les éléments décoratifs */
+  .clip-circle {
+    clip-path: circle(50% at 50% 50%);
+  }
+  
+  .clip-triangle {
+    clip-path: polygon(50% 0%, 0% 100%, 100% 100%);
+  }
+  
+  /* Animation subtile pour le formulaire au focus */
+  .neo-form:focus-within {
+    animation: pulse-border 1.5s infinite alternate;
+  }
+  
+  @keyframes pulse-border {
+    0% {
+      box-shadow: 0 0 0 0 rgba(13, 75, 89, 0);
+    }
+    100% {
+      box-shadow: 0 0 0 4px rgba(13, 75, 89, 0.05);
+    }
+  }
+</style>
+
+
+================================================
+File: src/pages/locations/example.astro
+================================================
+---
+import BaseLayout from '../../layouts/BaseLayout.astro';
+import '../../styles/global.css';
+
+// Page d'exemple pour les emplacements (utilisateur non connecté)
+---
+
+<BaseLayout title="Aperçu des emplacements" description="Exemple d'accès restreint">
+  <div class="max-w-xl mx-auto py-16 text-center">
+    <h1 class="text-3xl font-bold mb-6">Accès restreint</h1>
+    <p class="mb-6">Vous devez être connecté pour consulter la liste complète des emplacements.</p>
+    <div class="mb-8">
+      <h2 class="text-xl font-bold mb-2">Exemple d'emplacement</h2>
+      <div class="bg-cream border border-night/10 p-6 rounded shadow-sm inline-block">
+        <h3 class="text-lg font-bold mb-2">Frigo</h3>
+        <p class="text-xs text-night/60">Sensible à la température</p>
+      </div>
+    </div>
+    <a href="/auth/login" class="px-6 py-2 bg-petrol text-cream font-bold uppercase tracking-wider neo-btn-primary hover:bg-neo-mint transition-colors">Se connecter</a>
+  </div>
+  <script type="module">
+    if (window.localStorage.getItem('jwt') && window.location.pathname === '/locations/example') {
+      window.location.href = '/locations';
+    }
+  </script>
+</BaseLayout>
+
+
+
+================================================
+File: src/pages/locations/index.astro
+================================================
+---
+import BaseLayout from '../../layouts/BaseLayout.astro';
+import '../../styles/global.css';
+
+// Fonction pour récupérer les lieux depuis l'API Strapi
+async function fetchLocations() {
+  try {
+    const response = await fetch('http://localhost:1337/api/locations');
+    const data = await response.json();
+    if (!data || !data.data) {
+      return [];
+    }
+    return data.data;
+  } catch (error) {
+    return [];
+  }
+}
+
+let locations = [];
+let error = null;
+try {
+  locations = await fetchLocations();
+} catch (e) {
+  error = "Impossible de se connecter à l'API Strapi. Assurez-vous que le serveur est en cours d'exécution sur localhost:1337.";
+}
+---
+
+<BaseLayout title="Lieux de Stockage - Économat" description="Liste des lieux de stockage">
+  <div class="mb-8 md:mb-12">
+    <h2 class="text-2xl md:text-3xl font-bold mb-4 tracking-retro uppercase relative inline-block">
+      <span class="text-neo-mint">[</span> LIEUX DE STOCKAGE <span class="text-rust">]</span>
+    </h2>
+    <p class="opacity-80 max-w-2xl">
+      Retrouvez ici tous les lieux de stockage pour organiser vos articles.
+    </p>
+  </div>
+  {error && (
+    <div class="bg-rust/10 border border-l-4 border-rust p-4 mb-8">
+      <h3 class="font-bold text-rust mb-2">Erreur de connexion</h3>
+      <p class="text-sm">{error}</p>
+      <p class="mt-2 text-sm">
+        Assurez-vous que le serveur Strapi est démarré et accessible sur http://localhost:1337.
+      </p>
+    </div>
+  )}
+  {!error && locations.length === 0 && (
+    <div class="bg-night/5 border border-night/20 p-8 mb-8 text-center">
+      <h3 class="text-xl font-bold mb-2">Aucun lieu trouvé</h3>
+      <p class="opacity-80 mb-4">
+        Aucun lieu de stockage n'a encore été ajouté.
+      </p>
+      <a href="/locations/new" class="inline-flex items-center text-petrol hover-underline">
+        <span>Ajouter un lieu</span>
+        <span class="ml-1">→</span>
+      </a>
+    </div>
+  )}
+  <div class="grid grid-cols-1 gap-6">
+    {locations.map((location: any) => (
+      <div class="bg-cream border border-night/10 p-6 rounded shadow-sm flex flex-col md:flex-row md:items-center md:justify-between">
+        <div>
+          <h3 class="text-xl font-bold mb-2 tracking-retro">{location.attributes.name}</h3>
+          {location.attributes.temperature_sensitive && (
+            <span class="inline-block px-3 py-1 bg-neo-mint/20 text-neo-mint text-xs font-mono rounded-full mr-2">Sensible à la température</span>
+          )}
+        </div>
+        <a href={`/locations/${location.id}/edit`} class="mt-4 md:mt-0 px-5 py-2 bg-petrol text-cream font-bold uppercase tracking-retro text-sm rounded neo-btn-primary hover:bg-neo-mint transition-colors">Modifier</a>
+      </div>
+    ))}
+  </div>
+  <div class="mt-12 md:mt-16 text-center">
+    <a href="/locations/new" class="inline-flex items-center justify-center px-6 py-2 bg-petrol text-cream font-bold uppercase tracking-retro hover:bg-rust transition-colors duration-300">
+      <span class="mr-2">+ Ajouter un lieu</span>
+    </a>
+  </div>
+</BaseLayout>
+
+<script type="module">
+  function checkAuthAndRedirect() {
+    const jwt = window.localStorage.getItem('jwt');
+    if (!jwt) {
+      window.location.href = '/auth/login';
+    }
+  }
+  checkAuthAndRedirect();
+</script>
+
+<style>
+  .neo-btn-primary {
+    transition: all 0.3s ease;
+  }
+  .neo-btn-primary:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 0 rgba(10, 11, 12, 0.1);
+  }
+</style>
+
+
+
+================================================
+File: src/pages/locations/new.astro
+================================================
+export const prerender = false;
+---
+import BaseLayout from '../../layouts/BaseLayout.astro';
+import '../../styles/global.css';
+
+let formSuccess = false;
+let formError = null;
+
+if (Astro.request.method === 'POST') {
+  try {
+    const formData = await Astro.request.formData();
+    const locationData = {
+      data: {
+        name: formData.get('name'),
+        temperature_sensitive: formData.get('temperature_sensitive') === 'on'
+      }
+    };
+    const response = await fetch('http://localhost:1337/api/locations', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(locationData)
+    });
+    if (!response.ok) {
+      const errorData = await response.json();
+      throw new Error(errorData.error?.message || "Une erreur est survenue lors de la création du lieu.");
+    }
+    formSuccess = true;
+    setTimeout(() => {
+      return Astro.redirect('/locations');
+    }, 1500);
+  } catch (error) {
+    console.error('Erreur lors de la soumission du formulaire:', error);
+    formError = (error instanceof Error ? error.message : String(error)) || "Une erreur est survenue lors de la création du lieu.";
+  }
+}
+
+const neoColors = ['neo-pink', 'neo-yellow', 'neo-blue', 'neo-mint', 'neo-peach', 'neo-lavender'];
+const accentColor = neoColors[Math.floor(Math.random() * neoColors.length)];
+---
+
+<BaseLayout title="Nouveau Lieu de Stockage - Économat" description="Ajoutez un nouveau lieu de stockage">
+  <div class="mb-8 md:mb-12">
+    <h2 class="text-2xl md:text-3xl font-bold mb-4 tracking-retro uppercase relative inline-block">
+      <span class="text-petrol">[</span> NOUVEAU LIEU <span class="text-rust">]</span>
+      <div class={`absolute -right-8 -top-8 w-16 h-16 opacity-20 bg-${accentColor} clip-circle hidden md:block`}></div>
+    </h2>
+    <p class="opacity-80 max-w-2xl">
+      Ajoutez un nouveau lieu de stockage pour organiser vos articles.
+    </p>
+  </div>
+  {formSuccess && (
+    <div class="bg-neo-mint/10 border border-l-4 border-neo-mint p-4 mb-8 neo-alert-success">
+      <h3 class="font-bold text-neo-mint mb-2">Lieu créé avec succès!</h3>
+      <p class="text-sm">Vous allez être redirigé vers la liste des lieux...</p>
+    </div>
+  )}
+  {formError && (
+    <div class="bg-rust/10 border border-l-4 border-rust p-4 mb-8 neo-alert-error">
+      <h3 class="font-bold text-rust mb-2">Erreur</h3>
+      <p class="text-sm">{formError}</p>
+    </div>
+  )}
+  <div class="bg-cream border border-night/10 p-6 md:p-8 paper-cut relative overflow-hidden">
+    <div class={`absolute top-0 left-0 w-full h-2 bg-${accentColor}/30`}></div>
+    <div class="absolute bottom-0 right-0 w-24 h-24 opacity-5 clip-triangle transform rotate-12 bg-night"></div>
+    <div class={`absolute top-1/2 right-0 w-3 h-12 bg-${accentColor}/40 transform -translate-y-1/2 hidden lg:block`}></div>
+    <div class="absolute inset-0 bg-grid-dots opacity-5 pointer-events-none"></div>
+    <form method="POST" class="relative z-10 neo-form">
+      <div class="grid grid-cols-1 gap-y-0">
+        <div class="form-field">
+          <label for="location-name" class="block text-sm uppercase tracking-retro mb-1 font-bold">
+            Nom du lieu <span class="text-rust">*</span>
+          </label>
+          <div class="relative">
+            <input
+              type="text"
+              id="location-name"
+              name="name"
+              required
+              class="w-full py-2 px-3 bg-cream border border-night/30 text-sm font-mono focus:border-petrol focus:ring-1 focus:ring-petrol/30 neo-input"
+              placeholder="ex: Frigo, Placard, Cave..."
+            />
+          </div>
+        </div>
+        <div class="form-field flex items-center gap-2 mt-2">
+          <input
+            type="checkbox"
+            id="location-temperature"
+            name="temperature_sensitive"
+            class="neo-input"
+          />
+          <label for="location-temperature" class="text-sm font-mono">
+            Sensible à la température (ex: réfrigéré)
+          </label>
+        </div>
+      </div>
+      <div class="my-6 flex items-center">
+        <div class={`flex-grow h-px bg-${accentColor}/30`}></div>
+        <div class={`mx-4 w-3 h-3 bg-${accentColor}/60`}></div>
+        <div class="flex-grow h-px bg-night/10"></div>
+      </div>
+      <div class="flex flex-col sm:flex-row justify-center sm:justify-between gap-4 items-center mt-6">
+        <a href="/locations" class="px-6 py-2 border border-night/30 font-bold tracking-wider uppercase text-sm hover:bg-night/5 transition-colors text-center sm:text-left neo-btn-secondary">
+          Annuler
+        </a>
+        <button type="submit" class={`px-8 py-3 bg-petrol text-cream font-bold uppercase tracking-retro hover:bg-${accentColor} transition-colors duration-300 neo-btn-primary relative overflow-hidden`}>
+          <div class="absolute top-0 left-0 w-2 h-full bg-white/10"></div>
+          <span class="relative z-10">💾 Enregistrer le lieu</span>
+        </button>
+      </div>
+    </form>
+  </div>
+</BaseLayout>
+
+<style>
+  .neo-input {
+    transition: all 0.2s ease;
+    border-radius: 0;
+  }
+  .neo-input:focus {
+    outline: none;
+    box-shadow: 3px 3px 0 rgba(13, 75, 89, 0.1);
+    transform: translate(-1px, -1px);
+  }
+  .form-field {
+    margin-bottom: 1.5rem;
+  }
+  .neo-alert-success,
+  .neo-alert-error {
+    position: relative;
+    overflow: hidden;
+  }
+  .neo-alert-success::before,
+  .neo-alert-error::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.1), transparent);
+    animation: shimmer 2s infinite;
+    transform: translateX(-100%);
+  }
+  @keyframes shimmer {
+    100% {
+      transform: translateX(100%);
+    }
+  }
+  .neo-btn-primary {
+    position: relative;
+    transition: all 0.3s ease;
+  }
+  .neo-btn-primary:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 0 rgba(10, 11, 12, 0.1);
+  }
+  .neo-btn-secondary {
+    position: relative;
+    transition: all 0.2s ease;
+  }
+  .neo-btn-secondary:hover {
+    transform: translateY(-1px);
+  }
+  .neo-btn-secondary::after {
+    content: '';
+    position: absolute;
+    bottom: -2px;
+    left: 0;
+    width: 100%;
+    height: 1px;
+    background-color: currentColor;
+    opacity: 0.2;
+    transform: scaleX(0.7);
+    transition: transform 0.3s ease;
+    transform-origin: center;
+  }
+  .neo-btn-secondary:hover::after {
+    transform: scaleX(1);
+  }
+  .clip-circle {
+    clip-path: circle(50% at 50% 50%);
+  }
+  .clip-triangle {
+    clip-path: polygon(50% 0%, 0% 100%, 100% 100%);
+  }
+  .neo-form:focus-within {
+    animation: pulse-border 1.5s infinite alternate;
+  }
+  @keyframes pulse-border {
+    0% {
+      box-shadow: 0 0 0 0 rgba(13, 75, 89, 0);
+    }
+    100% {
+      box-shadow: 0 0 0 4px rgba(13, 75, 89, 0.05);
+    }
+  }
+</style>
+
+
+
+================================================
+File: src/pages/locations/[id]/edit.astro
+================================================
+---
+import BaseLayout from '../../../layouts/BaseLayout.astro';
+import '../../../styles/global.css';
+
+const { id } = Astro.params;
+let formSuccess = false;
+let formError = null;
+let location = null;
+
+try {
+  const response = await fetch(`http://localhost:1337/api/locations/${id}`);
+  if (!response.ok) {
+    throw new Error(`Erreur lors de la récupération du lieu: ${response.status}`);
+  }
+  const data = await response.json();
+  location = data.data;
+} catch (error) {
+  console.error('Erreur lors de la récupération des données:', error);
+  formError = "Impossible de récupérer les données du lieu. Vérifiez l'ID ou la connexion à l'API.";
+}
+
+if (Astro.request.method === 'POST' && location) {
+  try {
+    const formData = await Astro.request.formData();
+    const locationData = {
+      data: {
+        name: formData.get('name'),
+        temperature_sensitive: formData.get('temperature_sensitive') === 'on'
+      }
+    };
+    const response = await fetch(`http://localhost:1337/api/locations/${id}`, {
+      method: 'PUT',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(locationData)
+    });
+    if (!response.ok) {
+      const errorData = await response.json();
+      throw new Error(errorData.error?.message || "Une erreur est survenue lors de la modification du lieu.");
+    }
+    formSuccess = true;
+    setTimeout(() => {
+      return Astro.redirect('/locations');
+    }, 1500);
+  } catch (error) {
+    console.error('Erreur lors de la soumission du formulaire:', error);
+    formError = error.message || "Une erreur est survenue lors de la modification du lieu.";
+  }
+}
+
+const neoColors = ['neo-pink', 'neo-yellow', 'neo-blue', 'neo-mint', 'neo-peach', 'neo-lavender'];
+const accentColor = neoColors[Math.floor(Math.random() * neoColors.length)];
+---
+
+<BaseLayout title="Modifier le lieu de stockage - Économat" description="Modifiez un lieu de stockage existant">
+  <div class="mb-8 md:mb-12">
+    <h2 class="text-2xl md:text-3xl font-bold mb-4 tracking-retro uppercase relative inline-block">
+      <span class="text-petrol">[</span> MODIFIER LIEU <span class="text-rust">]</span>
+      <div class={`absolute -right-8 -top-8 w-16 h-16 opacity-20 bg-${accentColor} clip-circle hidden md:block`}></div>
+    </h2>
+    <p class="opacity-80 max-w-2xl">
+      Modifiez les informations du lieu de stockage. Les champs marqués d'un astérisque (*) sont obligatoires.
+    </p>
+  </div>
+  {formSuccess && (
+    <div class="bg-neo-mint/10 border border-l-4 border-neo-mint p-4 mb-8 neo-alert-success">
+      <h3 class="font-bold text-neo-mint mb-2">Lieu modifié avec succès!</h3>
+      <p class="text-sm">Vous allez être redirigé vers la liste des lieux...</p>
+    </div>
+  )}
+  {formError && (
+    <div class="bg-rust/10 border border-l-4 border-rust p-4 mb-8 neo-alert-error">
+      <h3 class="font-bold text-rust mb-2">Erreur</h3>
+      <p class="text-sm">{formError}</p>
+    </div>
+  )}
+  {location ? (
+    <div class="bg-cream border border-night/10 p-6 md:p-8 paper-cut relative overflow-hidden">
+      <div class={`absolute top-0 left-0 w-full h-2 bg-${accentColor}/30`}></div>
+      <div class="absolute bottom-0 right-0 w-24 h-24 opacity-5 clip-triangle transform rotate-12 bg-night"></div>
+      <div class={`absolute top-1/2 right-0 w-3 h-12 bg-${accentColor}/40 transform -translate-y-1/2 hidden lg:block`}></div>
+      <div class="absolute inset-0 bg-grid-dots opacity-5 pointer-events-none"></div>
+      <form method="POST" class="relative z-10 neo-form">
+        <div class="grid grid-cols-1 gap-y-0">
+          <div class="form-field">
+            <label for="location-name" class="block text-sm uppercase tracking-retro mb-1 font-bold">
+              Nom du lieu <span class="text-rust">*</span>
+            </label>
+            <div class="relative">
+              <input
+                type="text"
+                id="location-name"
+                name="name"
+                required
+                value={location.attributes.name}
+                class="w-full py-2 px-3 bg-cream border border-night/30 text-sm font-mono focus:border-petrol focus:ring-1 focus:ring-petrol/30 neo-input"
+                placeholder="ex: Frigo, Placard, Cave..."
+              />
+            </div>
+          </div>
+          <div class="form-field flex items-center gap-2 mt-2">
+            <input
+              type="checkbox"
+              id="location-temperature"
+              name="temperature_sensitive"
+              class="neo-input"
+              checked={location.attributes.temperature_sensitive}
+            />
+            <label for="location-temperature" class="text-sm font-mono">
+              Sensible à la température (ex: réfrigéré)
+            </label>
+          </div>
+        </div>
+        <div class="my-6 flex items-center">
+          <div class={`flex-grow h-px bg-${accentColor}/30`}></div>
+          <div class={`mx-4 w-3 h-3 bg-${accentColor}/60`}></div>
+          <div class="flex-grow h-px bg-night/10"></div>
+        </div>
+        <div class="flex flex-col sm:flex-row justify-center sm:justify-between gap-4 items-center mt-6">
+          <a href="/locations" class="px-6 py-2 border border-night/30 font-bold tracking-wider uppercase text-sm hover:bg-night/5 transition-colors text-center sm:text-left neo-btn-secondary">
+            Annuler
+          </a>
+          <button type="submit" class={`px-8 py-3 bg-petrol text-cream font-bold uppercase tracking-retro hover:bg-${accentColor} transition-colors duration-300 neo-btn-primary relative overflow-hidden`}>
+            <div class="absolute top-0 left-0 w-2 h-full bg-white/10"></div>
+            <span class="relative z-10">💾 Enregistrer les modifications</span>
+          </button>
+        </div>
+      </form>
+    </div>
+  ) : (
+    <div class="bg-cream border border-night/10 p-6 md:p-8 paper-cut relative overflow-hidden flex flex-col items-center justify-center py-16">
+      <div class="w-16 h-16 border-4 border-t-4 border-t-petrol border-night/20 rounded-full animate-spin mb-6"></div>
+      <p class="text-lg font-mono">Chargement du lieu...</p>
+    </div>
+  )}
+</BaseLayout>
+
+<style>
+  .neo-input {
+    transition: all 0.2s ease;
+    border-radius: 0;
+  }
+  .neo-input:focus {
+    outline: none;
+    box-shadow: 3px 3px 0 rgba(13, 75, 89, 0.1);
+    transform: translate(-1px, -1px);
+  }
+  .form-field {
+    margin-bottom: 1.5rem;
+  }
+  .neo-alert-success,
+  .neo-alert-error {
+    position: relative;
+    overflow: hidden;
+  }
+  .neo-alert-success::before,
+  .neo-alert-error::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.1), transparent);
+    animation: shimmer 2s infinite;
+    transform: translateX(-100%);
+  }
+  @keyframes shimmer {
+    100% {
+      transform: translateX(100%);
+    }
+  }
+  .neo-btn-primary {
+    position: relative;
+    transition: all 0.3s ease;
+  }
+  .neo-btn-primary:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 0 rgba(10, 11, 12, 0.1);
+  }
+  .neo-btn-secondary {
+    position: relative;
+    transition: all 0.2s ease;
+  }
+  .neo-btn-secondary:hover {
+    transform: translateY(-1px);
+  }
+  .neo-btn-secondary::after {
+    content: '';
+    position: absolute;
+    bottom: -2px;
+    left: 0;
+    width: 100%;
+    height: 1px;
+    background-color: currentColor;
+    opacity: 0.2;
+    transform: scaleX(0.7);
+    transition: transform 0.3s ease;
+    transform-origin: center;
+  }
+  .neo-btn-secondary:hover::after {
+    transform: scaleX(1);
+  }
+  .clip-circle {
+    clip-path: circle(50% at 50% 50%);
+  }
+  .clip-triangle {
+    clip-path: polygon(50% 0%, 0% 100%, 100% 100%);
+  }
+  .neo-form:focus-within {
+    animation: pulse-border 1.5s infinite alternate;
+  }
+  @keyframes pulse-border {
+    0% {
+      box-shadow: 0 0 0 0 rgba(13, 75, 89, 0);
+    }
+    100% {
+      box-shadow: 0 0 0 4px rgba(13, 75, 89, 0.05);
+    }
+  }
+</style>
+
+
+
+================================================
+File: src/styles/global.css
+================================================
+/* Importation des polices Google Fonts */
+@import url("https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;700&family=Space+Mono:wght@400;700&family=VT323&display=swap");
+
+@import "tailwindcss";
+
+/* Reset des styles de base */
+:root {
+  --color-cream: #f5f0e8;
+  --color-night: #0a0b0c;
+  --color-petrol: #0d4b59;
+  --color-rust: #c74e36;
+  --color-pastel-blue: #88a3bc;
+  --color-pastel-green: #a3bc88;
+}
+
+html,
+body {
+  background-color: var(--color-cream);
+  color: var(--color-night);
+  min-height: 100vh;
+  font-family: "IBM Plex Mono", "Space Mono", monospace;
+  scroll-behavior: smooth;
+}
+
+/* Effet scanline CRT (optionnel) */
+.scanline {
+  position: relative;
+  overflow: hidden;
+}
+
+.scanline::before {
+  content: "";
+  position: absolute;
+  width: 100%;
+  height: 2px;
+  background: rgba(0, 0, 0, 0.1);
+  opacity: 0.5;
+  pointer-events: none;
+  animation: scanline 8s linear infinite;
+  z-index: 30;
+  top: 0;
+  left: 0;
+}
+
+.crt-effect {
+  position: relative;
+  overflow: hidden;
+}
+
+.crt-effect::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: repeating-linear-gradient(
+    0deg,
+    rgba(0, 0, 0, 0.08) 0px,
+    rgba(0, 0, 0, 0.08) 1px,
+    transparent 1px,
+    transparent 2px
+  );
+  pointer-events: none;
+  z-index: 20;
+}
+
+/* Animations hover */
+.hover-underline {
+  position: relative;
+  display: inline-block;
+}
+
+.hover-underline::after {
+  content: "";
+  position: absolute;
+  width: 0;
+  height: 1px;
+  bottom: 0;
+  left: 0;
+  background-color: currentColor;
+  transition: width 0.25s ease-out;
+}
+
+.hover-underline:hover::after {
+  width: 100%;
+}
+
+.glitch-hover:hover {
+  animation: glitch 0.3s linear;
+}
+
+@keyframes glitch {
+  0% {
+    transform: translate(0);
+  }
+  20% {
+    transform: translate(-2px, 2px);
+  }
+  40% {
+    transform: translate(-2px, -2px);
+  }
+  60% {
+    transform: translate(2px, 2px);
+  }
+  80% {
+    transform: translate(2px, -2px);
+  }
+  100% {
+    transform: translate(0);
+  }
+}
+
+@keyframes scanline {
+  0% {
+    transform: translateY(-100%);
+  }
+  100% {
+    transform: translateY(100vh);
+  }
+}
+
+

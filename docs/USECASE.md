@@ -1,3 +1,5 @@
+[retour sommaire](../README.md)
+
 # Diagramme UML – Use Case (Cas d'utilisation)
 
 ```mermaid

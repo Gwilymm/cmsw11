@@ -14,13 +14,6 @@ const {
 // Variables globales
 const currentYear = new Date().getFullYear();
 
-// Fonction utilitaire pour vérifier l'auth côté client (token JWT dans localStorage)
-function isAuthenticated() {
-  if (typeof window !== 'undefined') {
-    return !!window.localStorage.getItem('jwt');
-  }
-  return false;
-}
 ---
 
 <html lang="fr" class="scroll-smooth">
@@ -262,6 +255,14 @@ function isAuthenticated() {
       }
     </style>
     <script type="module">
+      // Synchronisation JWT cookie <-> localStorage après login
+      const params = new URLSearchParams(window.location.search);
+      const jwt = params.get('jwt');
+      if (jwt) {
+        window.localStorage.setItem('jwt', jwt);
+        // Nettoie l'URL pour éviter de garder le paramètre
+        window.history.replaceState({}, document.title, window.location.pathname);
+      }
       function updateAuthLinks() {
         const jwt = window.localStorage.getItem('jwt');
         document.getElementById('auth-not-logged').style.display = jwt ? 'none' : 'inline-block';
@@ -274,6 +275,8 @@ function isAuthenticated() {
       if (logoutBtn) {
         logoutBtn.addEventListener('click', () => {
           window.localStorage.removeItem('jwt');
+          // Supprime aussi le cookie côté client (pour forcer la cohérence)
+          document.cookie = 'token=; Path=/; Expires=Thu, 01 Jan 1970 00:00:01 GMT;';
           updateAuthLinks();
           window.location.href = '/';
         });

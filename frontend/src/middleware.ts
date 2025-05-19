@@ -1,22 +1,34 @@
 import type { MiddlewareHandler } from "astro";
 
-export const onRequest: MiddlewareHandler = async (context, next) => {
-  const { request, cookies, url } = context;
+export const onRequest: MiddlewareHandler = async (
+  { request, cookies, url },
+  next
+) => {
   const token = cookies.get("token")?.value;
+  const pathname =
+    typeof url === "string" ? new URL(url, request.url).pathname : url.pathname;
 
-  // Protéger toutes les routes commençant par /dashboard
-  if (url.pathname.startsWith("/dashboard")) {
+  if (
+    pathname.startsWith("/items") ||
+    pathname.startsWith("/categories") ||
+    pathname.startsWith("/locations")
+  ) {
     if (!token) {
-      return Response.redirect("/login", 302);
+      // Build an absolute URL for the Location header:
+      const loginUrl = new URL("/auth/login", request.url).toString();
+      return Response.redirect(loginUrl, 302);
     }
-    // Optionnel : valider le token auprès de Strapi
+
     const meRes = await fetch("http://localhost:1337/api/users/me", {
       headers: { Authorization: `Bearer ${token}` },
     });
+
     if (!meRes.ok) {
       cookies.delete("token", { path: "/" });
-      return Response.redirect("/login", 302);
+      const loginUrl = new URL("/auth/login", request.url).toString();
+      return Response.redirect(loginUrl, 302);
     }
   }
+
   return next();
 };

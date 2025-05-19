@@ -1,6 +1,4 @@
-Voici un **résumé clair du projet** décrit dans ton document, suivi d'une **roadmap complète pour le réaliser avec Astro** comme framework front-end.
-
----
+[retour sommaire](../README.md)
 
 ## 📝 Résumé du Projet Strapi Headless
 

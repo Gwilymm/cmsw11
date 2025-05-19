@@ -1,3 +1,4 @@
+[retour sommaire](../README.md)
 
 # ✅ Tâches de Développement – Mon Économat (Astro + Strapi)
 
