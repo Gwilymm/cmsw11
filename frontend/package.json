@@ -9,6 +9,7 @@
     "astro": "astro"
   },
   "dependencies": {
+    "@astrojs/vercel": "^8.1.4",
     "@faker-js/faker": "^9.8.0",
     "@tailwindcss/vite": "^4.1.4",
     "astro": "^5.7.4",
