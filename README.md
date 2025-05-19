@@ -15,36 +15,34 @@ Une application de gestion de contenu construite avec Astro en front-end et Stra
 - [Use Cases](docs/USECASE.md) : Cas d'utilisation décrits pour les différents utilisateurs.
 
 
-## illustration
 ## Illustrations de l’interface
 
 ### Écran d’accueil
 ![Accueil](docs/img/accueil.png)
 
-### Liste des catégories
-![Catégories](docs/img/categorpries.png)
-
-### Liste des items
-![Items](docs/img/items.png)
-
-### Détail de la localisation
-![Localisation](docs/img/location.png)
+### Page d’inscription
+![Inscription](docs/img/register.png)
 
 ### Écran de connexion
 ![Login](docs/img/login.png)
 
-### Création d’une nouvelle catégorie
-![Nouvelle catégorie](docs/img/new-category.png)
+### Liste des items
+![Items](docs/img/items.png)
 
 ### Création d’un nouvel item
 ![Nouvel item](docs/img/new-item.png)
 
+### Liste des catégories
+![Catégories](docs/img/categories.png)
+
+### Création d’une nouvelle catégorie
+![Nouvelle catégorie](docs/img/new-category.png)
+
+### Détail de la localisation
+![Localisation](docs/img/location.png)
+
 ### Ajout d’une nouvelle localisation
 ![Nouvelle localisation](docs/img/new-location.png)
-
-### Page d’inscription
-![Inscription](docs/img/register.png)
-
 
 ## Comment contribuer
 

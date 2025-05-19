@@ -29,7 +29,7 @@ async function fetchCategories() {
       console.error('Données invalides reçues de l\'API Strapi (categories)', data);
       return [];
     }
-    return data.data.map(cat => ({ id: cat.id, name: cat.attributes.name }));
+    return data.data.map(cat => ({ id: cat.id, name: cat.name }));
   } catch (error) {
     console.error('Erreur lors de la récupération des catégories:', error);
     return [];
@@ -45,7 +45,7 @@ async function fetchLocations() {
       console.error('Données invalides reçues de l\'API Strapi (locations)', data);
       return [];
     }
-    return data.data.map(loc => ({ id: loc.id, name: loc.attributes.name }));
+    return (data.data as any[]).map((loc: any) => ({ id: loc.id, name: loc.name }));
   } catch (error) {
     console.error('Erreur lors de la récupération des lieux:', error);
     return [];
@@ -53,10 +53,10 @@ async function fetchLocations() {
 }
 
 // Récupération des données
-let items = [];
-let categories = [];
-let locations = [];
-let error = null;
+let items: any[] = [];
+let categories: any[] = [];
+let locations: any[] = [];
+let error: string | null = null;
 
 try {
   items = await fetchItems();
@@ -88,8 +88,8 @@ if (locationFilter) {
 }
 
 // Tri alphabétique des catégories et des lieux
-const uniqueCategories = categories.sort((a, b) => a.name.localeCompare(b.name));
-const uniqueLocations = locations.sort((a, b) => a.name.localeCompare(b.name));
+const uniqueCategories = (categories || []).sort((a: any, b: any) => a.name.localeCompare(b.name));
+const uniqueLocations = (locations || []).sort((a: any, b: any) => a.name.localeCompare(b.name));
 ---
 
 <BaseLayout title="Articles - Économat" description="Liste des articles disponibles dans mon économat">
@@ -113,7 +113,7 @@ const uniqueLocations = locations.sort((a, b) => a.name.localeCompare(b.name));
           onchange="window.location.href = this.value"
         >
           <option value="/items">Toutes les catégories</option>
-          {uniqueCategories.map((category) => (
+          {uniqueCategories.map((category: any) => (
             <option 
               value={`/items?category=${category.id}${locationFilter ? `&location=${locationFilter}` : ''}`}
               selected={categoryFilter === category.id.toString()}
@@ -134,7 +134,7 @@ const uniqueLocations = locations.sort((a, b) => a.name.localeCompare(b.name));
           <option value={categoryFilter ? `/items?category=${categoryFilter}` : '/items'}>
             Tous les emplacements
           </option>
-          {uniqueLocations.map((location) => (
+          {uniqueLocations.map((location: any) => (
             <option 
               value={`/items?location=${location.id}${categoryFilter ? `&category=${categoryFilter}` : ''}`}
               selected={locationFilter === location.id.toString()}
@@ -190,15 +190,15 @@ const uniqueLocations = locations.sort((a, b) => a.name.localeCompare(b.name));
         quantity={item.quantity}
         category={item.category?.data ? {
           id: item.category.data.id,
-          name: item.category.data.attributes.name
+          name: item.category.data.name
         } : undefined}
         location={item.location?.data ? {
           id: item.location.data.id,
-          name: item.location.data.attributes.name
+          name: item.location.data.name
         } : undefined}
         expiryDate={item.expiryDate}
-        imageUrl={item.image?.data?.attributes?.url 
-          ? `http://localhost:1337${item.image.data.attributes.url}`
+        imageUrl={item.image?.data?.url 
+          ? `http://localhost:1337${item.image.dataurl}`
           : undefined}
       />
     ))}
