@@ -3,59 +3,81 @@ import BaseLayout from '../../layouts/BaseLayout.astro';
 import ItemCard from '../../components/ItemCard.astro';
 import '../../styles/global.css';
 
-// Fonction pour récupérer les données depuis l'API Strapi
-async function fetchItems() {
-  try {
-    // Correction : utiliser populate=category&populate=location (Strapi v4)
-    const response = await fetch('http://localhost:1337/api/items');
-    const data = await response.json();
-    if (!data || !Array.isArray(data.data)) {
-      console.error('Données invalides reçues de l\'API Strapi', data);
-      return [];
-    }
-    return data.data;
-  } catch (error) {
-    console.error('Erreur lors de la récupération des items:', error);
-    return [];
-  }
+interface Category {
+  id: number;
+  name: string;
 }
 
-// Fonction pour récupérer les catégories depuis l'API Strapi
-async function fetchCategories() {
-  try {
-    const response = await fetch('http://localhost:1337/api/categories?pagination[pageSize]=100');
-    const data = await response.json();
-    if (!data || !Array.isArray(data.data)) {
-      console.error('Données invalides reçues de l\'API Strapi (categories)', data);
-      return [];
-    }
-    return data.data.map(cat => ({ id: cat.id, name: cat.name }));
-  } catch (error) {
-    console.error('Erreur lors de la récupération des catégories:', error);
-    return [];
-  }
+interface Location {
+  id: number;
+  name: string;
 }
 
-// Fonction pour récupérer les lieux depuis l'API Strapi
-async function fetchLocations() {
-  try {
-    const response = await fetch('http://localhost:1337/api/locations?pagination[pageSize]=100');
-    const data = await response.json();
-    if (!data || !Array.isArray(data.data)) {
-      console.error('Données invalides reçues de l\'API Strapi (locations)', data);
-      return [];
-    }
-    return (data.data as any[]).map((loc: any) => ({ id: loc.id, name: loc.name }));
-  } catch (error) {
-    console.error('Erreur lors de la récupération des lieux:', error);
-    return [];
-  }
+interface Item {
+  id: number;
+  name: string;
+  quantity: number;
+  unit?: string;
+  expiryDate?: string;
+  notes?: string;
+  imageUrl?: string;
+  category?: Category;
+  location?: Location;
 }
 
-// Récupération des données
-let items: any[] = [];
-let categories: any[] = [];
-let locations: any[] = [];
+// 1) Récupère et « aplatit » les items
+async function fetchItems(): Promise<Item[]> {
+  const res = await fetch('http://localhost:1337/api/items?populate=*');
+  const json = await res.json();
+  if (!json.data || !Array.isArray(json.data)) return [];
+  return json.data.map((entry: any) => {
+    // Strapi retourne déjà les champs en flat, pas sous "attributes"
+    const cat = entry.category;
+    const loc = entry.storage_location;
+    return {
+      id: entry.id,
+      name: entry.name,
+      quantity: entry.quantity,
+      unit: entry.unit || undefined,
+      expiryDate: entry.expiration_date || undefined,
+      imageUrl: entry.image?.data?.url
+        ? `http://localhost:1337${entry.image.data.url}`
+        : undefined,
+      category: cat
+        ? { id: cat.id, name: cat.name }
+        : undefined,
+      location: loc
+        ? { id: loc.id, name: loc.name }
+        : undefined
+    };
+  });
+}
+
+// 2) Récupère toutes les catégories (pour le filtre)
+async function fetchCategories(): Promise<Category[]> {
+  const res = await fetch('http://localhost:1337/api/categories?pagination[pageSize]=100');
+  const json = await res.json();
+  if (!json.data || !Array.isArray(json.data)) return [];
+  return json.data.map((c: any) => ({
+    id: c.id,
+    name: c.name
+  }));
+}
+
+// 3) Récupère tous les lieux (pour le filtre)
+async function fetchLocations(): Promise<Location[]> {
+  const res = await fetch('http://localhost:1337/api/locations?pagination[pageSize]=100');
+  const json = await res.json();
+  if (!json.data || !Array.isArray(json.data)) return [];
+  return json.data.map((l: any) => ({
+    id: l.id,
+    name: l.name
+  }));
+}
+
+let items: Item[] = [];
+let categories: Category[] = [];
+let locations: Location[] = [];
 let error: string | null = null;
 
 try {
@@ -63,184 +85,134 @@ try {
   categories = await fetchCategories();
   locations = await fetchLocations();
 } catch (e) {
-  error = "Impossible de se connecter à l'API Strapi. Assurez-vous que le serveur est en cours d'exécution sur localhost:1337.";
-  console.error(error);
+  console.error(e);
+  error = "Impossible de se connecter à l'API Strapi. Vérifiez que le serveur tourne sur localhost:1337.";
 }
 
-// Récupération des filtres depuis l'URL
+// Lecture des filtres dans l'URL
 const { searchParams } = Astro.url;
 const categoryFilter = searchParams.get('category');
 const locationFilter = searchParams.get('location');
 
-// Application des filtres si nécessaire
-let filteredItems = [...items];
-
+// Applique les filtres
+let filteredItems = items;
 if (categoryFilter) {
-  filteredItems = filteredItems.filter(item => 
-    item.category?.data?.id.toString() === categoryFilter
-  );
+  filteredItems = filteredItems.filter(i => i.category?.id.toString() === categoryFilter);
 }
-
 if (locationFilter) {
-  filteredItems = filteredItems.filter(item => 
-    item.location?.data?.id.toString() === locationFilter
-  );
+  filteredItems = filteredItems.filter(i => i.location?.id.toString() === locationFilter);
 }
 
-// Tri alphabétique des catégories et des lieux
-const uniqueCategories = (categories || []).sort((a: any, b: any) => a.name.localeCompare(b.name));
-const uniqueLocations = (locations || []).sort((a: any, b: any) => a.name.localeCompare(b.name));
+// Trie alphabétique pour les selects
+const uniqueCategories = categories.sort((a,b) => a.name.localeCompare(b.name));
+const uniqueLocations  = locations.sort((a,b) => a.name.localeCompare(b.name));
 ---
 
-<BaseLayout title="Articles - Économat" description="Liste des articles disponibles dans mon économat">
+<BaseLayout title="Articles – Économat" description="Inventaire des articles">
   <div class="mb-8 md:mb-12">
     <h2 class="text-2xl md:text-3xl font-bold mb-4 tracking-retro uppercase">
       <span class="text-petrol">[</span> CATALOGUE <span class="text-rust">]</span>
     </h2>
     <p class="opacity-80 max-w-2xl">
-      Consultez notre inventaire complet d'articles. Utilisez les filtres ci-dessous pour affiner votre recherche par catégorie ou lieu de stockage.
+      Filtrez par catégorie ou lieu de stockage ci-dessous.
     </p>
   </div>
-  
-  <!-- Zone de filtre -->
-  <div class="bg-night/5 p-4 md:p-6 mb-8 md:mb-10 flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
-    <div class="flex flex-wrap gap-3">
-      <div class="filter-group">
-        <label for="category-filter" class="block text-xs uppercase tracking-retro mb-1">Catégorie</label>
-        <select 
-          id="category-filter" 
-          class="py-1 px-3 bg-cream border border-night/30 text-sm font-mono focus:border-petrol"
-          onchange="window.location.href = this.value"
-        >
-          <option value="/items">Toutes les catégories</option>
-          {uniqueCategories.map((category: any) => (
-            <option 
-              value={`/items?category=${category.id}${locationFilter ? `&location=${locationFilter}` : ''}`}
-              selected={categoryFilter === category.id.toString()}
-            >
-              {category.name}
-            </option>
-          ))}
-        </select>
-      </div>
-      
-      <div class="filter-group">
-        <label for="location-filter" class="block text-xs uppercase tracking-retro mb-1">Emplacement</label>
-        <select 
-          id="location-filter" 
-          class="py-1 px-3 bg-cream border border-night/30 text-sm font-mono focus:border-petrol"
-          onchange="window.location.href = this.value"
-        >
-          <option value={categoryFilter ? `/items?category=${categoryFilter}` : '/items'}>
-            Tous les emplacements
-          </option>
-          {uniqueLocations.map((location: any) => (
-            <option 
-              value={`/items?location=${location.id}${categoryFilter ? `&category=${categoryFilter}` : ''}`}
-              selected={locationFilter === location.id.toString()}
-            >
-              {location.name}
-            </option>
-          ))}
-        </select>
-      </div>
-    </div>
-    
-    <a 
-      href="/items" 
-      class="text-xs uppercase tracking-retro px-3 py-1.5 border border-night/20 hover:bg-night hover:text-cream transition-colors"
-      class:list={{ hidden: !categoryFilter && !locationFilter }}
-    >
-      <span class="font-bold">X</span> Réinitialiser les filtres
-    </a>
-  </div>
-  
-  {error && (
-    <div class="bg-rust/10 border border-l-4 border-rust p-4 mb-8">
-      <h3 class="font-bold text-rust mb-2">Erreur de connexion</h3>
-      <p class="text-sm">{error}</p>
-      <p class="mt-2 text-sm">
-        Assurez-vous que le serveur Strapi est démarré et accessible sur http://localhost:1337.
-      </p>
-    </div>
-  )}
-  
-  {!error && filteredItems.length === 0 && (
-    <div class="bg-night/5 border border-night/20 p-8 mb-8 text-center">
-      <h3 class="text-xl font-bold mb-2">Aucun article trouvé</h3>
-      <p class="opacity-80 mb-4">
-        Aucun article ne correspond à vos critères de recherche.
-      </p>
-      <a 
-        href="/items" 
-        class="inline-flex items-center text-petrol hover-underline"
+
+  <!-- Filtres -->
+  <div class="bg-night/5 p-4 md:p-6 mb-8 flex flex-wrap items-center gap-4">
+    <label class="text-xs uppercase tracking-retro">
+      Catégorie
+      <select
+        class="ml-2 py-1 px-3 bg-cream border border-night/30 text-sm font-mono focus:border-petrol"
+        onchange="location.href=this.value"
       >
-        <span>Voir tous les articles</span>
-        <span class="ml-1">→</span>
+        <option value="/items">Toutes</option>
+        {uniqueCategories.map(cat => (
+          <option
+            value={`/items?category=${cat.id}${locationFilter?`&location=${locationFilter}`:''}`}
+            selected={categoryFilter===cat.id.toString()}
+          >
+            {cat.name}
+          </option>
+        ))}
+      </select>
+    </label>
+
+    <label class="text-xs uppercase tracking-retro">
+      Lieu
+      <select
+        class="ml-2 py-1 px-3 bg-cream border border-night/30 text-sm font-mono focus:border-petrol"
+        onchange="location.href=this.value"
+      >
+        <option value={`/items${categoryFilter?`?category=${categoryFilter}`:''}`}>Tous</option>
+        {uniqueLocations.map(loc => (
+          <option
+            value={`/items?location=${loc.id}${categoryFilter?`&category=${categoryFilter}`:''}`}
+            selected={locationFilter===loc.id.toString()}
+          >
+            {loc.name}
+          </option>
+        ))}
+      </select>
+    </label>
+
+    {(categoryFilter || locationFilter) && (
+      <a
+        href="/items"
+        class="ml-auto text-xs uppercase px-3 py-1.5 border border-night/20 hover:bg-night hover:text-cream transition"
+      >
+        Réinitialiser
       </a>
+    )}
+  </div>
+
+  {error ? (
+    <div class="bg-rust/10 border-l-4 border-rust p-4 mb-8">
+      {error}
+    </div>
+  ) : filteredItems.length === 0 ? (
+    <div class="p-8 mb-8 text-center bg-night/5 border border-night/20">
+      Aucun article ne correspond aux filtres.
+    </div>
+  ) : (
+    <div class="grid grid-cols-1 gap-6">
+      {filteredItems.map(item => (
+        <ItemCard
+          id={item.id}
+          name={item.name}
+          quantity={item.quantity}
+          unit={item.unit}
+          category={item.category}
+          location={item.location}
+          expiryDate={item.expiryDate}
+          imageUrl={item.imageUrl}
+        />
+      ))}
     </div>
   )}
-  
-  <!-- Grille des articles -->
-  <div class="grid grid-cols-1 gap-6">
-    {filteredItems.map((item) => (
-      <ItemCard
-        id={item.id}
-        name={item.name}
-        quantity={item.quantity}
-        category={item.category?.data ? {
-          id: item.category.data.id,
-          name: item.category.data.name
-        } : undefined}
-        location={item.location?.data ? {
-          id: item.location.data.id,
-          name: item.location.data.name
-        } : undefined}
-        expiryDate={item.expiryDate}
-        imageUrl={item.image?.data?.url 
-          ? `http://localhost:1337${item.image.dataurl}`
-          : undefined}
-      />
-    ))}
-  </div>
-  
-  <!-- Section de bas de page avec bouton d'ajout -->
-  <div class="mt-12 md:mt-16 text-center">
-    <a 
-      href="/items/new" 
-      class="inline-flex items-center justify-center px-6 py-2 bg-petrol text-cream font-bold uppercase tracking-retro hover:bg-rust transition-colors duration-300"
+
+  <div class="mt-12 text-center">
+    <a
+      href="/items/new"
+      class="px-6 py-2 bg-petrol text-cream font-bold uppercase tracking-retro hover:bg-rust transition"
     >
-      <span class="mr-2">+ Ajouter un article</span>
+      + Ajouter un article
     </a>
   </div>
 </BaseLayout>
 
-<script type="module">
-  function checkAuthAndRedirect() {
-    const jwt = window.localStorage.getItem('jwt');
-    if (!jwt) {
-      window.location.href = '/auth/login';
-    }
-  }
-  checkAuthAndRedirect();
+<script is:inline>
+  // SI vous utilisez un JWT côté client
+  if (!localStorage.getItem('jwt')) location.href = '/auth/login';
 </script>
 
 <style>
-  /* Styles supplémentaires pour la page des items */
-  .filter-group {
-    position: relative;
-  }
-  
   select {
     appearance: none;
     padding-right: 2rem;
-    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' fill='currentColor' viewBox='0 0 16 16'%3E%3Cpath d='M2 5l6 6 6-6H2z'/%3E%3C/svg%3E");
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' fill='currentColor'%3E%3Cpath d='M2 5l6 6 6-6z'/%3E%3C/svg%3E");
     background-repeat: no-repeat;
     background-position: right 0.5rem center;
     background-size: 16px 12px;
-  }
-  
-  .hidden {
-    display: none;
   }
 </style>

@@ -1,238 +1,160 @@
 ---
-// Définition des types pour les props du composant
 interface Props {
   id: number;
   name: string;
   quantity: number;
-  category?: {
-    name: string;
-    id: number;
-  };
-  location?: {
-    name: string;
-    id: number;
-  };
+  unit: string;
+  category?: { id: number; name: string };
+  location?: { id: number; name: string };
   expiryDate?: string;
   imageUrl?: string;
 }
 
-// Récupération des props avec déstructuration
-const { 
-  id, 
-  name, 
-  quantity, 
-  category, 
-  location, 
-  expiryDate, 
-  imageUrl = "/vegetable_7c5205ac83.svg" 
+const {
+  id,
+  name,
+  quantity,
+  category,
+  unit,
+  location,
+  expiryDate,
+  imageUrl = "/vegetable_7c5205ac83.svg",
 } = Astro.props;
 
-// Formatage de la date d'expiration si elle existe
-const formattedExpiryDate = expiryDate 
-  ? new Date(expiryDate).toLocaleDateString('fr-FR', { 
-      year: 'numeric', 
-      month: 'short', 
-      day: 'numeric' 
-    }) 
+const formattedExpiryDate = expiryDate
+  ? new Date(expiryDate).toLocaleDateString("fr-FR", {
+      year: "numeric",
+      month: "short",
+      day: "numeric",
+    })
   : null;
 
-// Calculer si l'article est bientôt expiré (moins de 7 jours)
+// Expiration logic
 let isExpiringSoon = false;
 let isExpired = false;
-
 if (expiryDate) {
   const today = new Date();
   const expiry = new Date(expiryDate);
-  const daysUntilExpiry = Math.ceil((expiry.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
-  
-  isExpiringSoon = daysUntilExpiry <= 7 && daysUntilExpiry > 0;
-  isExpired = daysUntilExpiry <= 0;
+  const daysLeft = Math.ceil((expiry.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
+  isExpiringSoon = daysLeft > 0 && daysLeft <= 7;
+  isExpired = daysLeft <= 0;
 }
 
-// Sélection d'une couleur Neo-Memphis basée sur l'ID pour garantir la consistance
-const neoColors = ['neo-pink', 'neo-yellow', 'neo-blue', 'neo-mint', 'neo-peach', 'neo-lavender'];
-const accentColor = neoColors[id % neoColors.length] || 'neo-blue';
-
-// Formes géométriques basées sur l'ID pour la cohérence visuelle
-const shapes = ['triangle', 'circle', 'rhombus'];
+// Deco colors & shapes
+const neoColors = ["neo-pink","neo-yellow","neo-blue","neo-mint","neo-peach","neo-lavender"];
+const accentColor = neoColors[id % neoColors.length] || "neo-blue";
+const shapes = ["triangle","circle","rhombus"];
 const decorShape = shapes[id % shapes.length];
 ---
 
 <div class="item-card border border-night/20 p-4 md:p-6 hover:border-petrol transition-all duration-300 bg-cream relative overflow-hidden paper-cut-soft">
-  <!-- Élément décoratif Neo-Memphis en arrière-plan -->
-  <div class={`absolute ${decorShape === 'triangle' ? 'top-[-10px] right-[-10px] w-20 h-20 bg-${accentColor}/10 clip-triangle rotate-45' : 
-                         decorShape === 'circle' ? 'bottom-[-20px] right-[-20px] w-32 h-32 bg-${accentColor}/10 clip-circle' : 
-                         'top-[-15px] left-[-15px] w-24 h-24 bg-${accentColor}/10 clip-rhombus rotate-12'} 
-              opacity-50 pointer-events-none z-0`}>
-  </div>
-  
-  <!-- Ligne décorative colorée au-dessus de la carte -->
+  <!-- Background deco -->
+  <div
+    class={`absolute ${
+      decorShape === "triangle"
+        ? `top-[-10px] right-[-10px] w-20 h-20 bg-${accentColor}/10 clip-triangle rotate-45`
+        : decorShape === "circle"
+        ? `bottom-[-20px] right-[-20px] w-32 h-32 bg-${accentColor}/10 clip-circle`
+        : `top-[-15px] left-[-15px] w-24 h-24 bg-${accentColor}/10 clip-rhombus rotate-12`
+    } opacity-50 pointer-events-none z-0`}
+  ></div>
+
+  <!-- Top bar -->
   <div class={`h-1 w-12 bg-${accentColor} absolute top-0 left-6`}></div>
-  
-  <!-- Badge pour catégorie avec style Neo-Memphis -->
-  {category && (
-    <div class="absolute top-2 right-2 z-10">
-      <a href={`/categories/${category.id}`} 
-         class={`px-2 py-1 bg-${accentColor}/20 text-xs tracking-retro hover:bg-${accentColor}/30 transition-all duration-200 relative neo-tag`}>
-        {category.name}
-      </a>
-    </div>
-  )}
+
+  <!-- Category badge -->
+ 
 
   <div class="flex items-start gap-4 relative z-10">
-    <!-- Image/icône du produit avec style paper-cut -->
+    <!-- Image -->
     <div class={`flex-shrink-0 w-16 h-16 md:w-20 md:h-20 bg-night/5 flex items-center justify-center relative overflow-hidden neo-image border-${accentColor}/40`}>
       <img src={imageUrl} alt={name} class="max-w-full max-h-full object-contain relative z-10" />
-      
-      <!-- Motif de points en arrière-plan de l'image -->
       <div class="absolute inset-0 opacity-20 bg-neo-dots pointer-events-none"></div>
     </div>
-    
-    <!-- Détails du produit -->
+
+    <!-- Details -->
     <div class="flex-grow">
       <h3 class="text-lg font-bold tracking-retro mb-2">
         <a href={`/items/${id}`} class="hover:text-petrol transition-colors">
           {name}
         </a>
       </h3>
-      
-      <div class="flex flex-wrap gap-x-6 gap-y-1 text-sm">
-        <!-- Quantité avec icône stylisée Neo-Memphis -->
-        <div class="flex items-center">
-          <span class="font-bold mr-2 text-petrol">QTÉ:</span>
-          <span class={`font-mono px-2 py-0.5 bg-${accentColor}/10 rounded-sm`}>{quantity}</span>
+      {/* Sous-titre combiné catégorie • emplacement */}
+      {(category || location) && (
+        <p class="text-sm text-night/70 mb-2">
+          {category?.name}{category && location && ' • '}{location?.name}
+        </p>
+      )}
+      {/* Barre de métadonnées */}
+      <div class="flex flex-wrap gap-6 text-sm mt-2">
+        <div>
+          <span class="font-bold text-petrol">QTÉ:</span> {quantity} {unit}
         </div>
-        
-        <!-- Lieu de stockage -->
-        {location && (
-          <div class="flex items-center">
-            <span class="font-bold mr-2 text-petrol">LIEU:</span>
-            <a href={`/locations/${location.id}`} class="hover:text-rust transition-colors hover-underline">
-              {location.name}
-            </a>
-          </div>
-        )}
-        
-        <!-- Date d'expiration -->
         {formattedExpiryDate && (
-          <div class="flex items-center">
-            <span class="font-bold mr-2 text-petrol">EXP:</span>
-            <span class={`font-mono ${isExpired ? 'text-rust' : isExpiringSoon ? 'text-rust/70' : ''}`}>
+          <div>
+            <span class="font-bold text-petrol">EXP:</span>{' '}
+            <span class={isExpired ? "text-rust" : isExpiringSoon ? "text-rust/70" : ""}>
               {formattedExpiryDate}
             </span>
           </div>
         )}
       </div>
     </div>
-    
-    <!-- Bouton d'action avec style Neo-Memphis -->
+
+    <!-- Action button -->
     <div class="flex-shrink-0">
-      <a href={`/items/${id}`} 
-         class={`neo-button inline-block px-3 py-1 border border-night/30 hover:border-${accentColor} hover:bg-${accentColor}/10 transition-all duration-300 text-xs uppercase tracking-retro font-bold`}>
+      <a
+        href={`/items/${id}`}
+        class={`neo-button inline-block px-3 py-1 border border-night/30 hover:border-${accentColor} hover:bg-${accentColor}/10 transition-all duration-300 text-xs uppercase tracking-retro font-bold`}
+      >
         Voir &raquo;
       </a>
     </div>
   </div>
-  
-  <!-- Indicateur de stock bas ou expiré si nécessaire -->
+
+  <!-- Alerts -->
   {isExpired && (
     <div class="mt-3 bg-rust/10 border-l-2 border-rust px-3 py-1.5 text-xs relative z-10 neo-alert">
-      <span class="font-bold text-rust">ALERTE:</span> Produit expiré !
+      <strong class="text-rust">ALERTE:</strong> Produit expiré !
     </div>
   )}
-  
   {isExpiringSoon && (
     <div class="mt-3 bg-rust/5 border-l-2 border-rust/70 px-3 py-1.5 text-xs relative z-10 neo-alert">
-      <span class="font-bold text-rust/70">NOTE:</span> Expire bientôt !
+      <strong class="text-rust/70">NOTE:</strong> Expire bientôt !
     </div>
   )}
-  
   {quantity <= 2 && (
     <div class="mt-3 bg-pastel-blue/10 border-l-2 border-pastel-blue px-3 py-1.5 text-xs relative z-10 neo-alert">
-      <span class="font-bold text-pastel-blue">INFO:</span> Stock bas !
+      <strong class="text-pastel-blue">INFO:</strong> Stock bas !
     </div>
   )}
 </div>
 
 <style>
-  .item-card {
-    position: relative;
-    transition: all 0.3s ease;
-    will-change: transform;
-  }
-  
-  .item-card:hover {
-    transform: translateY(-3px);
-    box-shadow: 0 3px 10px rgba(10, 11, 12, 0.07);
-  }
+  .item-card { position: relative; transition: all .3s ease; }
+  .item-card:hover { transform: translateY(-3px); box-shadow: 0 3px 10px rgba(10,11,12,.07); }
 
-  /* Style Neo-Memphis */
-  .neo-image {
-    position: relative;
-    border: 1px dashed;
-    transition: all 0.3s ease;
-    will-change: transform;
-  }
-  
-  .item-card:hover .neo-image {
-    transform: rotate(-2deg);
-    box-shadow: 2px 2px 0 rgba(10, 11, 12, 0.1);
-  }
+  .neo-image { position: relative; border: 1px dashed; transition: all .3s ease; }
+  .item-card:hover .neo-image { transform: rotate(-2deg); box-shadow: 2px 2px 0 rgba(10,11,12,.1); }
 
   .neo-button {
-    position: relative;
-    transition: all 0.2s ease;
-    overflow: hidden;
-    will-change: transform;
+    position: relative; transition: all .2s ease; overflow: hidden;
   }
-  
   .neo-button::after {
-    content: '';
-    position: absolute;
-    bottom: 0;
-    left: 0;
-    width: 100%;
-    height: 2px;
-    background: currentColor;
-    opacity: 0.3;
-    transform: scaleX(0);
-    transform-origin: right;
-    transition: transform 0.3s ease;
+    content: ''; position: absolute; bottom: 0; left: 0;
+    width: 100%; height: 2px; background: currentColor;
+    opacity: .3; transform: scaleX(0); transform-origin: right;
+    transition: transform .3s ease;
   }
-  
-  .neo-button:hover {
-    transform: translateY(-1px);
-  }
-  
-  .neo-button:hover::after {
-    transform: scaleX(1);
-    transform-origin: left;
-  }
-  
-  .neo-tag {
-    transition: all 0.2s ease;
-  }
-  
+  .neo-button:hover { transform: translateY(-1px); }
+  .neo-button:hover::after { transform: scaleX(1); transform-origin: left; }
+
+  .neo-tag { position: relative; }
   .neo-tag::before {
-    content: '';
-    position: absolute;
-    top: 0;
-    left: -4px;
-    width: 4px;
-    height: 100%;
-    background: currentColor;
-    opacity: 0.2;
+    content: ''; position: absolute; top: 0; left: -4px;
+    width: 4px; height: 100%; background: currentColor; opacity:.2;
   }
-  
-  .neo-tag:hover {
-    transform: translateX(-1px);
-  }
-  
-  .neo-alert {
-    transition: padding 0.2s ease;
-  }
-  
-  .neo-alert:hover {
-    padding-left: 1.2rem;
-  }
+
+  .neo-alert { transition: padding .2s ease; }
+  .neo-alert:hover { padding-left: 1.2rem; }
 </style>
