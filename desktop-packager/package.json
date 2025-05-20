@@ -9,8 +9,8 @@
   },
   "main": "main.js",
   "scripts": {
-    "build:frontend": "cd ../frontend && pnpm install && pnpm run build && rm -rf dist-frontend && cp -R dist ../desktop-packager/dist-frontend",
-    "build:backend": "cd ../economat-backend && pnpm install && NODE_ENV=production pnpm run build && rm -rf build-backend && cp -R dist ../desktop-packager/build-backend",
+    "build:frontend": "cd ../frontend && pnpm install && pnpm run build && rm -rf dist-frontend && cp -R dist ../desktop-packager/dist-frontend && cp -R node_modules ../desktop-packager/dist-frontend/node_modules",
+    "build:backend": "cd ../economat-backend && pnpm install && NODE_ENV=production pnpm run build && rm -rf build-backend && cp -R dist ../desktop-packager/build-backend && cp -R node_modules ../desktop-packager/build-backend/node_modules",
     "build:desktop": "pnpm run build:frontend && pnpm run build:backend",
     "package:win": "pnpm run build:desktop && pnpm exec electron-builder --win",
     "package:linux": "pnpm run build:desktop && pnpm exec electron-builder --linux"
