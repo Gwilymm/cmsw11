@@ -3,7 +3,6 @@ export const prerender = false;
 
 import BaseLayout from '../../layouts/BaseLayout.astro';
 import '../../styles/global.css';
-import { redirect } from 'astro';
 
 let formSuccess = false;
 let formError = null;
@@ -12,10 +11,7 @@ if (Astro.request.method === 'POST') {
   const cookies = Astro.cookies;
   const token = cookies.get('token')?.value;
 
-  // Si pas de token, on force la redirection immédiate vers le login
-  if (!token) {
-    throw redirect(302, new URL('/auth/login', Astro.request.url).toString());
-  }
+
 
   try {
     const formData = await Astro.request.formData();

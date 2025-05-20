@@ -1,43 +1,49 @@
 ---
-// Composant pour afficher une liste déroulante avec données chargées dynamiquement
-// Utilisé dans les formulaires pour les champs liés à des entités distantes (catégories, emplacements)
+// Simple dropdown component that fetches data from an API endpoint
+import { fetchRemoteData } from '../utils/selectRemoteHelpers';
 
-const { label, endpoint, valueKey, labelKey, name, required = false, selectedValue = '', className = '' } = Astro.props;
+export interface SelectProps {
+  label: string;
+  endpoint: string;
+  valueKey: string;
+  labelKey: string;
+  name: string;
+  required?: boolean;
+  selectedValue?: string;
+  className?: string;
+}
 
-// Récupération des données depuis l'API
-const fetchData = async () => {
-  try {
-    const response = await fetch(`http://localhost:1337${endpoint}`);
-    if (!response.ok) throw new Error(`Erreur lors de la requête: ${response.status}`);
-    const result = await response.json();
-    return result.data || [];
-  } catch (error) {
-    console.error(`Erreur lors de la récupération des données depuis ${endpoint}:`, error);
-    return [];
-  }
-};
+const props = Astro.props as SelectProps;
+const { 
+  label, 
+  endpoint, 
+  valueKey, 
+  labelKey, 
+  name, 
+  required = false, 
+  selectedValue = '', 
+  className = '' 
+} = props;
 
-let items = await fetchData();
-
-// Tri alphabétique des options par labelKey
-items.sort((a, b) => {
+// Fetch and prepare data
+const data = await fetchRemoteData(endpoint);
+const items = [...data].sort((a, b) => {
   const labelA = (a[labelKey] ?? a.attributes?.[labelKey] ?? '').toString();
   const labelB = (b[labelKey] ?? b.attributes?.[labelKey] ?? '').toString();
   return labelA.localeCompare(labelB);
 });
 
-// Génération d'un ID unique pour le champ
-const fieldId = `field-${name}-${Math.random().toString(36).substring(2, 9)}`;
+// Generate ID
+const fieldId = `field-${name}-${Math.floor(Math.random() * 1000000)}`;
 ---
 
-<div class={`form-field ${className}`}>
+<div class:list={['form-field', className]}>
   <label for={fieldId} class="block text-sm uppercase tracking-retro mb-1 font-bold">
     {label}
     {required && <span class="text-rust ml-1">*</span>}
   </label>
   
   <div class="relative">
-    <!-- Select avec style rétro Neo-Memphis -->
     <select 
       id={fieldId}
       name={name}
@@ -46,14 +52,13 @@ const fieldId = `field-${name}-${Math.random().toString(36).substring(2, 9)}`;
     >
       <option value="" disabled selected={!selectedValue}>Sélectionner...</option>
       
-      {Array.isArray(items) && items.map((item) => {
-        // Gestion des structures plates ou imbriquées (Strapi)
+      {items.map((item) => {
         const value = item[valueKey] ?? item.attributes?.[valueKey] ?? item.id;
         const label = item[labelKey] ?? item.attributes?.[labelKey] ?? `[${labelKey} manquant]`;
         return (
           <option 
             value={value} 
-            selected={!!selectedValue && value?.toString() === selectedValue.toString() ? true : undefined}
+            selected={selectedValue && value?.toString() === selectedValue.toString()}
           >
             {label}
           </option>
@@ -61,15 +66,13 @@ const fieldId = `field-${name}-${Math.random().toString(36).substring(2, 9)}`;
       })}
     </select>
     
-    <!-- Flèche stylisée Neo-Memphis pour le select -->
     <div class="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-night">
       <svg class="w-4 h-4 fill-current" viewBox="0 0 20 20">
-        <path d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 011.414 1.414l-4 4a1 1 01-1.414 0l-4-4a1 1 010-1.414z"></path>
+        <path d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 011.414 1.414l-4 4a1 1 01-1.414 0l-4-4a1 1 010-1.414z"></path>
       </svg>
     </div>
   </div>
   
-  {/* Message d'erreur lorsque les données ne peuvent pas être chargées */}
   {items.length === 0 && (
     <p class="text-rust text-xs mt-1">
       Impossible de charger les données. Vérifiez que l'API est accessible.
