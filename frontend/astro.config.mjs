@@ -1,39 +1,43 @@
-// @ts-check
+// frontend/astro.config.mjs
 import { defineConfig } from 'astro/config';
+import node from '@astrojs/node';
 import tailwindcss from '@tailwindcss/vite';
-import vercel from '@astrojs/vercel';
 import { fileURLToPath } from 'url';
-import path from 'path';
 
 // https://astro.build/config
 export default defineConfig({
-  output: "server",
+  // on veut du SSR par défaut
+  output: 'server',
+
+  // on utilise l’adapter Node en mode standalone (nécessaire depuis v2.0.0)
+  adapter: node({
+    mode: 'standalone'
+  }),
+
   vite: {
     plugins: [ tailwindcss() ],
+    resolve: {
+      alias: {
+        '@': fileURLToPath(new URL('./src', import.meta.url)),
+      },
+    },
     build: {
       rollupOptions: {
         onwarn(warning, warn) {
-          // Skip warnings related to null bytes
-          if (warning.message && warning.message.includes('null bytes')) {
-            return;
-          }
+          // Ignore les warnings de "null bytes"
+          if (warning.message?.includes('null bytes')) return;
           warn(warning);
-        }
-      }
+        },
+      },
     },
     optimizeDeps: {
-      exclude: [ 'astro' ]
-    },
-    resolve: {
-      alias: {
-        '@': fileURLToPath(new URL('./src', import.meta.url))
-      }
+      exclude: [ 'astro' ],
     },
     server: {
       fs: {
-        allow: [ '.' ]
-      }
-    }
+        // Permet à Vite d’accéder à tout le repo
+        allow: [ '.' ],
+      },
+    },
   },
-  adapter: vercel()
 });
