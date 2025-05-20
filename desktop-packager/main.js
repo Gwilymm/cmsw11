@@ -27,7 +27,7 @@ function createWindow() {
 
 // Démarre Strapi via le JS compilé
 function startBackend(base) {
-	const entry = path.join(base, 'build-backend', 'index.js');
+	const entry = path.join(base, 'build-backend', 'dist', 'src', 'index.js');
 	if (!fs.existsSync(entry)) {
 		console.error('❌ Strapi dist introuvable à :', entry);
 		return;
@@ -42,7 +42,7 @@ function startBackend(base) {
 
 // Démarre Astro SSR via l’entry .mjs dans dist-frontend
 function startFrontend(base) {
-	const entry = path.join(base, 'dist-frontend', 'server', 'entry.mjs');
+	const entry = path.join(base, 'dist-frontend', 'dist', 'server', 'entry.mjs');
 	if (!fs.existsSync(entry)) {
 		console.error('❌ Astro SSR introuvable à :', entry);
 		return;

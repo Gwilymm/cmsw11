@@ -94,10 +94,13 @@ jobs:
             - Paquet .deb pour Debian/Ubuntu
             - Exécutable Windows (.exe)
 
+      - name: Install GitHub CLI
+        run: sudo apt-get update && sudo apt-get install -y gh
+
       - name: Upload release assets
-        uses: actions/upload-release-asset@v2
-        with:
-          upload_url: ${{ steps.create_release.outputs.upload_url }}
-          asset_path: release/
-          asset_name: ${{ file }}
-          asset_content_type: application/octet-stream
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          for file in release/*; do
+            gh release upload ${{ github.ref_name }} "$file" --clobber
+          done
