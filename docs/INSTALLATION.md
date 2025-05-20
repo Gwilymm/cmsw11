@@ -1,18 +1,23 @@
-# Documentation d'installation du projet Astro/Strapi
+# Guide d'installation du projet Astro/Strapi sous Windows 11
 
-Ce guide explique comment installer et lancer l'ensemble du projet (frontend Astro + backend Strapi), ainsi que la configuration des fichiers `.env`.
+Ce guide détaille toutes les étapes pour installer et lancer le projet (frontend Astro + backend Strapi) sur Windows 11, y compris la configuration des fichiers `.env`.
 
 ## Prérequis
 
-- **Node.js** v18 à v22 (recommandé : v20)
-- **npm** (ou pnpm/yarn)
-- **Git**
+- **Node.js** v18 à v22 ([Télécharger Node.js](https://nodejs.org/))
+- **npm** (installé avec Node.js)
+- **Git** ([Télécharger Git](https://git-scm.com/download/win))
+ou
+- **Git** ([Télécharger Git](https://gitforwindows.org))
+- Un terminal (PowerShell, CMD ou [Windows Terminal](https://aka.ms/terminal))
 
 ## 1. Cloner le dépôt
 
+Ouvre un terminal et exécute :
+
 ```sh
-git clone <url-du-repo>
-cd cms
+git clone https://github.com/Gwilymm/cmsw11.git
+cd cmsw11
 ```
 
 ## 2. Installation du backend (Strapi)
@@ -38,17 +43,7 @@ JWT_SECRET=tobemodified
 
 > **Remplace chaque valeur `tobemodified` par une chaîne secrète forte et unique.**
 
-#### (Optionnel) Variables pour la base de données PostgreSQL
-Si tu utilises PostgreSQL, ajoute aussi :
-```
-DATABASE_CLIENT=postgres
-DATABASE_HOST=localhost
-DATABASE_PORT=5432
-DATABASE_NAME=strapi
-DATABASE_USERNAME=strapi
-DATABASE_PASSWORD=motdepasse
-DATABASE_SSL=false
-```
+
 
 ### Lancer Strapi
 
@@ -60,10 +55,10 @@ L'admin Strapi sera accessible sur [http://localhost:1337/admin](http://localhos
 
 ## 3. Installation du frontend (Astro)
 
-Dans un autre terminal :
+Ouvre un **nouveau terminal** :
 
 ```sh
-cd frontend
+cd cmsw11/frontend
 npm install
 ```
 
@@ -81,7 +76,8 @@ Le site sera accessible sur [http://localhost:4321](http://localhost:4321)
 
 Si tu veux surcharger l'URL de l'API Strapi, crée un fichier `.env` dans `frontend/` :
 ```
-VITE_API_URL=http://localhost:1337
+STRAPI_API_URL=http://localhost:1337
+STRAPI_API_TOKEN=
 ```
 Et adapte les appels API dans le code si besoin.
 
@@ -100,10 +96,12 @@ node scripts/seedHousehold.js
 - Connecte-toi via `/auth/login`.
 - L'authentification utilise un JWT stocké dans le localStorage.
 
-## 7. Dépannage
+## 7. Dépannage (spécifique Windows)
 
 - Si le frontend ne trouve pas l'API, vérifie que Strapi tourne bien sur `localhost:1337`.
 - Si tu modifies `.env`, relance le serveur concerné.
+- Si un port est déjà utilisé, change la variable `PORT` dans `.env` ou arrête l'application qui utilise ce port.
+- Si tu rencontres des problèmes de droits, lance le terminal en mode administrateur.
 
 ## 8. Structure du projet
 

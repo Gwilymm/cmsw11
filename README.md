@@ -4,6 +4,7 @@ Une application de gestion de contenu construite avec Astro en front-end et Stra
 
 ## Table des matières
 
+- [Installation](docs/INSTALLATION.md) : Intallation du projet
 - [Modèle de classes](docs/CLASS.md) : Décrit la structure des entités et leurs relations.
 - [Roadmap](docs/ROADMAP.md) : Planification et étapes prévues pour le développement futur.
 - [Routes](docs/ROUTES.md) : Liste et description des routes côté back-end exposées par Strapi.
