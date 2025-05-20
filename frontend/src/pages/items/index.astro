@@ -106,6 +106,18 @@ if (locationFilter) {
 // Trie alphabétique pour les selects
 const uniqueCategories = categories.sort((a,b) => a.name.localeCompare(b.name));
 const uniqueLocations  = locations.sort((a,b) => a.name.localeCompare(b.name));
+
+// Pagination: 10 items par page
+const pageParam = searchParams.get('page');
+const currentPage = pageParam ? parseInt(pageParam) : 1;
+const itemsPerPage = 10;
+const totalPages = Math.ceil(filteredItems.length / itemsPerPage);
+const startIndex = (currentPage - 1) * itemsPerPage;
+const pageItems = filteredItems.slice(startIndex, startIndex + itemsPerPage);
+
+// Classes de pagination
+const activePageClass = 'bg-slate-200 text-cream border-petrol';
+const inactivePageClass = 'bg-cream text-night border-night/30 hover:bg-night/5';
 ---
 
 <BaseLayout title="Articles – Économat" description="Inventaire des articles">
@@ -170,13 +182,13 @@ const uniqueLocations  = locations.sort((a,b) => a.name.localeCompare(b.name));
     <div class="bg-rust/10 border-l-4 border-rust p-4 mb-8">
       {error}
     </div>
-  ) : filteredItems.length === 0 ? (
+  ) : pageItems.length === 0 ? (
     <div class="p-8 mb-8 text-center bg-night/5 border border-night/20">
       Aucun article ne correspond aux filtres.
     </div>
   ) : (
     <div class="grid grid-cols-1 gap-6">
-      {filteredItems.map(item => (
+      {pageItems.map(item => (
         <ItemCard
           id={item.id}
           name={item.name}
@@ -190,6 +202,58 @@ const uniqueLocations  = locations.sort((a,b) => a.name.localeCompare(b.name));
       ))}
     </div>
   )}
+
+  <!-- Boutons Suivant / Précédent -->
+  <div class="mt-8 flex justify-center items-center space-x-4">
+    {/* Bouton Précédent toujours visible */}
+    <a
+      href={currentPage > 1
+        ? `/items?page=${currentPage - 1}${categoryFilter ? `&category=${categoryFilter}` : ''}${locationFilter ? `&location=${locationFilter}` : ''}`
+        : '#'}
+      class={
+        `px-4 py-2 font-bold uppercase tracking-retro transition ` +
+        (currentPage > 1
+          ? 'bg-petrol text-cream hover:bg-rust'
+          : 'bg-cream text-night cursor-not-allowed opacity-50')
+      }
+    >
+      Précédent
+    </a>
+
+    {/* Numéros de pages si plus de 1 page */}
+    {totalPages > 1 && (
+      <nav class="flex justify-center space-x-2">
+        {Array.from({ length: totalPages }).map((_, idx) => {
+          const pageNum = idx + 1;
+          const href = `/items?page=${pageNum}${categoryFilter ? `&category=${categoryFilter}` : ''}${locationFilter ? `&location=${locationFilter}` : ''}`;
+          const isActive = pageNum === currentPage;
+          return (
+            <a
+              href={href}
+              class={`px-3 py-1 border-2 ${isActive ? activePageClass : inactivePageClass}`}
+            >
+              {pageNum}
+            </a>
+          );
+        })}
+      </nav>
+    )}
+
+    {/* Bouton Suivant toujours visible */}
+    <a
+      href={currentPage < totalPages
+        ? `/items?page=${currentPage + 1}${categoryFilter ? `&category=${categoryFilter}` : ''}${locationFilter ? `&location=${locationFilter}` : ''}`
+        : '#'}
+      class={
+        `px-4 py-2 font-bold uppercase tracking-retro transition ` +
+        (currentPage < totalPages
+          ? 'bg-petrol text-cream hover:bg-rust'
+          : 'bg-cream text-night cursor-not-allowed opacity-50')
+      }
+    >
+      Suivant
+    </a>
+  </div>
 
   <div class="mt-12 text-center">
     <a

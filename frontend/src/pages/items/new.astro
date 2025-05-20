@@ -1,9 +1,9 @@
 ---
-export const prerender = false;
 
 import BaseLayout from '../../layouts/BaseLayout.astro';
 import FilterDropdown from '../../components/FilterDropdown.astro';
 import '../../styles/global.css';
+import SelectRemote from '../../components/SelectRemote.astro';
 
 let formSuccess = false;
 let formError = null;
@@ -20,6 +20,9 @@ if (Astro.request.method === 'POST') {
 
   try {
     const formData = await Astro.request.formData();
+    // Récupération de l'ID utilisateur depuis les cookies
+    const tokenData = JSON.parse(atob(token.split('.')[1]));
+    const userId = tokenData.id;
     const itemData = {
       data: {
         name: String(formData.get('name') ?? ''),
@@ -28,7 +31,9 @@ if (Astro.request.method === 'POST') {
         expiration_date: formData.get('expiration_date') ? String(formData.get('expiration_date')) : null,
         notes: String(formData.get('notes') ?? ''),
         category: formData.get('category') ? parseInt(String(formData.get('category')), 10) : null,
-        storage_location: formData.get('storage_location') ? parseInt(String(formData.get('storage_location')), 10) : null
+        storage_location: formData.get('storage_location') ? parseInt(String(formData.get('storage_location')), 10) : null,
+        user: userId, // Ajout de l'ID utilisateur
+
       }
     };
 
@@ -174,7 +179,7 @@ const today = new Date().toISOString().split('T')[0];
         </div>
 
         <!-- Catégorie -->
-        <SelectRemote client:load
+        <SelectRemote
           label="Catégorie"
           endpoint="/api/categories"
           valueKey="id"
@@ -184,7 +189,7 @@ const today = new Date().toISOString().split('T')[0];
         />
 
         <!-- Lieu de stockage -->
-        <SelectRemote client:load
+        <SelectRemote
           label="Lieu de stockage"
           endpoint="/api/locations"
           valueKey="id"

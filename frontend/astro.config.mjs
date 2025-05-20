@@ -1,11 +1,14 @@
 // frontend/astro.config.mjs
 import { defineConfig } from 'astro/config';
 import node from '@astrojs/node';
-import tailwindcss from '@tailwindcss/vite';
+import tailwind from '@astrojs/tailwind';
+// Retirer l’import du plugin Vite incorrect
 import { fileURLToPath } from 'url';
 
 // https://astro.build/config
 export default defineConfig({
+  // Intégration Tailwind officielle
+  integrations: [ tailwind() ],
   // on veut du SSR par défaut
   output: 'server',
 
@@ -15,7 +18,7 @@ export default defineConfig({
   }),
 
   vite: {
-    plugins: [ tailwindcss() ],
+    // Retirer plugin tailwindcss() et laisser PostCSS gérer Tailwind
     resolve: {
       alias: {
         '@': fileURLToPath(new URL('./src', import.meta.url)),

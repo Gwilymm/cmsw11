@@ -4,7 +4,7 @@ import { faker } from '@faker-js/faker';
 
 const STRAPI = 'http://localhost:1337';
 // Récupérer le token d'API Strapi depuis STRAPI_TOKEN ou STRAPI_API_TOKEN
-const TOKEN = process.env.STRAPI_API_TOKEN || process.env.STRAPI_API_TOKEN;
+const TOKEN = process.env.STRAPI_TOKEN_API || process.env.STRAPI_API_TOKEN;
 if (!TOKEN) {
 	console.error('Il manque la variable d\'environnement STRAPI_TOKEN (ou STRAPI_API_TOKEN)');
 	process.exit(1);

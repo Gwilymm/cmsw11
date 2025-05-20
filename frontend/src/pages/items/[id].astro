@@ -4,9 +4,12 @@ import '../../styles/global.css';
 
 // Récupération de l'ID depuis les paramètres d'URL
 const { id } = Astro.params;
+if (typeof id !== 'string') {
+  throw new Error('ID de l\'article manquant ou invalide');
+}
 
 // Fonction pour récupérer les données d'un item spécifique
-async function fetchItem(id) {
+async function fetchItem(id: string) {
   try {
     // Ajout du populate pour relations (Strapi v4)
     const response = await fetch(`http://localhost:1337/api/items/${id}?populate=category&populate=storage_location`);

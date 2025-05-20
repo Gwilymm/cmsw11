@@ -3,7 +3,7 @@ interface Props {
   id: number;
   name: string;
   quantity: number;
-  unit: string;
+  unit?: string;
   category?: { id: number; name: string };
   location?: { id: number; name: string };
   expiryDate?: string;
@@ -15,7 +15,7 @@ const {
   name,
   quantity,
   category,
-  unit,
+  unit = '',
   location,
   expiryDate,
   imageUrl = "/vegetable_7c5205ac83.svg",

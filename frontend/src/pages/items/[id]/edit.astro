@@ -1,6 +1,7 @@
 ---
 import BaseLayout from '../../../layouts/BaseLayout.astro';
 import FilterDropdown from '../../../components/FilterDropdown.astro';
+import SelectRemote from '../../../components/SelectRemote.astro';
 import '../../../styles/global.css';
 
 // Récupération de l'ID de l'article depuis les paramètres d'URL
@@ -31,17 +32,23 @@ try {
 if (Astro.request.method === 'POST' && item) {
   try {
     const formData = await Astro.request.formData();
+    const cookies = Astro.cookies;
+    const token = cookies.get('token')?.value;
+    const userId = cookies.get('userId')?.value;
     
     // Construction de l'objet de données pour la mise à jour
     const itemData = {
       data: {
-        name: formData.get('name'),
-        quantity: parseFloat(formData.get('quantity')),
-        unit: formData.get('unit'),
-        expiration_date: formData.get('expiration_date') || null,
-        notes: formData.get('notes') || '',
-        category: formData.get('category'),
-        location: formData.get('storage_location')
+        name: String(formData.get('name') ?? ''),
+        quantity: parseFloat(String(formData.get('quantity') ?? '0')),
+        unit: String(formData.get('unit') ?? ''),
+        expiration_date: formData.get('expiration_date') ? String(formData.get('expiration_date')) : null,
+        notes: String(formData.get('notes') ?? ''),
+        category: formData.get('category') ? parseInt(String(formData.get('category')), 10) : null,
+        storage_location: formData.get('storage_location') ? parseInt(String(formData.get('storage_location')), 10) : null,
+        user: userId ? {
+          connect: [parseInt(userId, 10)]
+        } : undefined
       }
     };
     
@@ -50,6 +57,7 @@ if (Astro.request.method === 'POST' && item) {
       method: 'PUT',
       headers: {
         'Content-Type': 'application/json',
+        Authorization: `Bearer ${token}` // Ajout du token d'authentification
       },
       body: JSON.stringify(itemData)
     });
@@ -68,14 +76,14 @@ if (Astro.request.method === 'POST' && item) {
     
   } catch (error) {
     console.error('Erreur lors de la soumission du formulaire:', error);
-    formError = error.message || "Une erreur est survenue lors de la mise à jour de l'article.";
+    formError = error instanceof Error ? error.message : "Une erreur est survenue lors de la mise à jour de l'article.";
   }
 }
 
 // Génération d'une couleur Neo-Memphis pour les éléments décoratifs
 // Utilise l'ID de l'article comme seed pour avoir toujours la même couleur pour le même article
 const neoColors = ['neo-pink', 'neo-yellow', 'neo-blue', 'neo-mint', 'neo-peach', 'neo-lavender'];
-const accentColor = item ? neoColors[parseInt(id) % neoColors.length] : 'neo-blue';
+const accentColor = item ? neoColors[(parseInt(id || '0') % neoColors.length)] : 'neo-blue';
 
 // Unités disponibles pour le select
 const units = [
@@ -90,12 +98,12 @@ const units = [
 const today = new Date().toISOString().split('T')[0];
 
 // Formatage de la date d'expiration pour le champ date (si disponible)
-const formattedExpiryDate = item?.attributes?.expiration_date 
-  ? new Date(item.attributes.expiration_date).toISOString().split('T')[0]
+const formattedExpiryDate = item?.expiration_date 
+  ? new Date(item.expiration_date).toISOString().split('T')[0]
   : '';
 ---
 
-<BaseLayout title={`Modifier ${item?.attributes?.name || 'l\'article'} - Économat`} description="Modifiez un article existant dans votre économat">
+<BaseLayout title={`Modifier ${item?.name || 'l\'article'} - Économat`} description="Modifiez un article existant dans votre économat">
   <div class="mb-8 md:mb-12">
     <h2 class="text-2xl md:text-3xl font-bold mb-4 tracking-retro uppercase relative inline-block">
       <span class="text-petrol">[</span> MODIFIER L'ARTICLE <span class="text-rust">]</span>
@@ -105,7 +113,7 @@ const formattedExpiryDate = item?.attributes?.expiration_date
     </h2>
     
     {item && (
-      <p class="text-xl font-mono mb-2">{item.attributes.name}</p>
+      <p class="text-xl font-mono mb-2">{item.name}</p>
     )}
     
     <p class="opacity-80 max-w-2xl">
@@ -152,7 +160,7 @@ const formattedExpiryDate = item?.attributes?.expiration_date
                 id="item-name" 
                 name="name" 
                 required
-                value={item.attributes.name}
+                value={item.name}
                 class="w-full py-2 px-3 bg-cream border border-night/30 text-sm font-mono focus:border-petrol focus:ring-1 focus:ring-petrol/30 neo-input"
                 placeholder="ex: Lait, Pain, Farine..."
               />
@@ -173,7 +181,7 @@ const formattedExpiryDate = item?.attributes?.expiration_date
                 step="0.01"
                 min="0.01"
                 required
-                value={item.attributes.quantity}
+                value={item.quantity}
                 class="w-full py-2 px-3 bg-cream border border-night/30 text-sm font-mono focus:border-petrol focus:ring-1 focus:ring-petrol/30 neo-input"
                 placeholder="1.5"
               />
@@ -193,7 +201,7 @@ const formattedExpiryDate = item?.attributes?.expiration_date
                 >
                   <option value="" disabled>Sélectionner...</option>
                   {units.map(unit => (
-                    <option value={unit.value} selected={item.attributes.unit === unit.value}>{unit.label}</option>
+                    <option value={unit.value} selected={item.unit === unit.value}>{unit.label}</option>
                   ))}
                 </select>
                 <!-- Flèche stylisée Neo-Memphis -->
@@ -230,7 +238,7 @@ const formattedExpiryDate = item?.attributes?.expiration_date
             labelKey="name" 
             name="category"
             required={true}
-            selectedValue={item.attributes.category?.data?.id}
+            selectedValue={item.category?.data?.id}
           />
           
           <!-- Emplacement (utilisation du SelectRemote) -->
@@ -241,7 +249,7 @@ const formattedExpiryDate = item?.attributes?.expiration_date
             labelKey="name" 
             name="storage_location"
             required={true}
-            selectedValue={item.attributes.location?.data?.id}
+            selectedValue={item.storage_location?.data?.id}
           />
           
           <!-- Notes (textarea pleine largeur) -->
@@ -255,7 +263,7 @@ const formattedExpiryDate = item?.attributes?.expiration_date
               rows="3"
               class="w-full py-2 px-3 bg-cream border border-night/30 text-sm font-mono focus:border-petrol focus:ring-1 focus:ring-petrol/30 neo-input"
               placeholder="Notes supplémentaires sur cet article..."
-            >{item.attributes.notes}</textarea>
+            >{item.notes}</textarea>
           </div>
         </div>
         
